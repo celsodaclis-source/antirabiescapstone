@@ -174,6 +174,43 @@ class SmsGateway
             $lastError = $endpoint.' -> HTTP '.$response->status();
         }
 
+        // Cloud / private-server mode (e.g. https://api.sms-gate.app:443) does not
+        // expose /health. Listing devices proves auth + reachability without sending SMS.
+        try {
+            $response = Http::withBasicAuth($this->username, $this->password)
+                ->acceptJson()
+                ->connectTimeout(3)
+                ->timeout(5)
+                ->get($this->baseUrl.'/3rdparty/v1/devices');
+        } catch (ConnectionException $e) {
+            return [
+                'connected' => false,
+                'message' => 'Could not reach '.$this->baseUrl.' - '.$e->getMessage(),
+            ];
+        }
+
+        if ($response->successful()) {
+            $body = $this->decode($response, $this->baseUrl.'/3rdparty/v1/devices');
+            $device = $this->deviceId;
+            if (is_array($body)) {
+                // Single-device responses return the device object directly.
+                $device = $body['id'] ?? $body['deviceId'] ?? $device;
+            }
+
+            return [
+                'connected' => true,
+                'device' => $device,
+                'message' => 'Connected to SMS Gateway (cloud) at '.$this->baseUrl.'.',
+            ];
+        }
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            return [
+                'connected' => false,
+                'message' => 'Gateway rejected the credentials (HTTP '.$response->status().'). Check the username and password.',
+            ];
+        }
+
         return [
             'connected' => false,
             'message' => 'Reached '.$this->baseUrl.' but no health endpoint responded'.($lastError ? ' ('.$lastError.')' : '').'.',

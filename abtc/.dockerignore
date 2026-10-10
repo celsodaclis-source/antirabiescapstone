@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+vendor
+tests
+.env
+.env.*
+npm-debug.log
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/framework/views/.gitignore
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+public/build
+public/hot
