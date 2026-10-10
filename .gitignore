@@ -1,0 +1,35 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dependencies and generated frontend files
+/vendor/
+/node_modules/
+**/vendor/
+**/node_modules/
+**/public/build/
+**/public/hot
+
+# Runtime data and local databases
+*.sqlite
+*.sqlite3
+*.sql
+**/storage/logs/*.log
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/testing/*
+**/storage/framework/views/*
+**/storage/app/private/*
+**/storage/backups/*
+
+# Local archives, credentials, and generated test artifacts
+*.zip
+cookies*.txt
+login_*.txt
+login_*.html
+test_output*.pdf
+.phpunit.result.cache

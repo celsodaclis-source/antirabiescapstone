@@ -1,0 +1,20 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep Laravel source and runtime directories inaccessible to direct requests.
+    RewriteRule ^(?:app|bootstrap|config|database|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+
+    # Requests already mapped into Laravel's public directory must reach its own
+    # .htaccess, which forwards application routes to public/index.php.
+    RewriteRule ^public(?:/|$) - [L]
+
+    # InfinityFree serves htdocs, while Laravel expects its public directory to
+    # be the document root. Internally map all other requests into public/.
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "(?i)^(\.env(\..*)?|artisan|composer\.(json|lock)|phpunit\.xml|package(-lock)?\.json|vite\.config\.js)$">
+    Require all denied
+</FilesMatch>
