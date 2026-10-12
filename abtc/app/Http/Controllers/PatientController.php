@@ -6,6 +6,7 @@ use App\Models\BiteIncident;
 use App\Models\Patient;
 use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
+use App\Models\VaccineInventory;
 use App\Services\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,8 +81,9 @@ class PatientController extends Controller
     {
         $nextRegularTicketNumber = $this->nextTicketNumber();
         $nextPriorityTicketNumber = $this->nextTicketNumber(true);
+        $vaccineTypes = $this->availableVaccineTypes();
 
-        return view('patients.create', compact('nextRegularTicketNumber', 'nextPriorityTicketNumber'));
+        return view('patients.create', compact('nextRegularTicketNumber', 'nextPriorityTicketNumber', 'vaccineTypes'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -104,6 +106,8 @@ class PatientController extends Controller
             'animal_vaccinated' => ['nullable', 'boolean'],
             'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:'.implode(',', Patient::patientTypes())],
+            'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
+            'planned_dose_count' => ['required', 'integer', 'in:3,4'],
         ]);
 
         $animalVaccinated = $request->boolean('animal_vaccinated');
@@ -120,6 +124,8 @@ class PatientController extends Controller
                 'address' => $data['address'],
                 'barangay' => $data['barangay'],
                 'patient_type' => $data['patient_type'] ?? 'regular',
+                'vaccine_type' => $data['vaccine_type'],
+                'planned_dose_count' => (int) $data['planned_dose_count'],
             ]);
 
             BiteIncident::create([
@@ -140,7 +146,7 @@ class PatientController extends Controller
                 'is_priority' => $patient->isPriority(),
             ]);
 
-            $this->generateSchedules($patient, $data['date_of_bite']);
+            $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
 
             Audit::log('patient.register', "Registered patient {$patient->fullName()} (Ticket: ".($ticket ? $ticket->ticket_number : 'none').")", $patient);
 
@@ -306,10 +312,10 @@ class PatientController extends Controller
         return $prefix.'-001';
     }
 
-    protected function generateSchedules(Patient $patient, string $biteDate): void
+    protected function generateSchedules(Patient $patient, string $biteDate, int $doseCount = 4): void
     {
         $base = \Carbon\Carbon::parse($biteDate);
-        foreach (\App\Models\VaccinationSchedule::DOSE_DAYS as $index => $dayOffset) {
+        foreach (array_slice(VaccinationSchedule::DOSE_DAYS, 0, $doseCount) as $index => $dayOffset) {
             VaccinationSchedule::create([
                 'patient_id' => $patient->id,
                 'dose_number' => $index + 1,
@@ -317,5 +323,19 @@ class PatientController extends Controller
                 'status' => 'scheduled',
             ]);
         }
+    }
+
+    protected function availableVaccineTypes(): array
+    {
+        return VaccineInventory::where('quantity', '>', 0)
+            ->where('expiration_date', '>=', now()->toDateString())
+            ->pluck('vaccine_name')
+            ->unique()
+            ->reject(fn (string $name) => (bool) preg_match(
+                '/\b(?:equi[\s-]?rab|(?:human|equine)\s+rabies\s+(?:immunoglobulin|serum)|anti[- ]rabies\s+serum|rabies\s+(?:immunoglobulin|immune\s+globulin)|(?:hrig|erig|rig))\b/i',
+                $name
+            ))
+            ->values()
+            ->all();
     }
 }

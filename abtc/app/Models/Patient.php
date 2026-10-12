@@ -13,6 +13,7 @@ class Patient extends Model
     protected $fillable = [
         'first_name', 'middle_name', 'last_name', 'suffix', 'dob', 'sex',
         'contact_number', 'address', 'barangay', 'patient_type',
+        'vaccine_type', 'planned_dose_count',
     ];
 
     protected $casts = [

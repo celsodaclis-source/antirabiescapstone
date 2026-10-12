@@ -7,6 +7,7 @@ use App\Models\BiteIncident;
 use App\Models\Patient;
 use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
+use App\Models\VaccineInventory;
 use App\Services\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,6 +58,8 @@ class PatientApiController extends Controller
             'animal_vaccinated' => ['nullable', 'boolean'],
             'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:' . implode(',', Patient::patientTypes())],
+            'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
+            'planned_dose_count' => ['required', 'integer', 'in:3,4'],
         ]);
 
         return DB::transaction(function () use ($data, $request) {
@@ -80,12 +83,12 @@ class PatientApiController extends Controller
                 'is_priority' => $patient->isPriority(),
             ]);
 
-            $this->generateSchedules($patient, $data['date_of_bite']);
+            $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
 
             Audit::log('patient.register', "API: Registered patient {$patient->fullName()} (Ticket: " . ($ticket ? $ticket->ticket_number : 'none') . ")", $patient);
 
             return response()->json([
-                'data' => $patient->load('biteIncidents', 'tickets'),
+                'data' => $patient->load('biteIncidents', 'tickets', 'vaccinationSchedules'),
                 'ticket' => $ticket,
                 'message' => 'Patient registered successfully.',
             ], 201);
@@ -161,10 +164,10 @@ class PatientApiController extends Controller
         return $prefix . '-001';
     }
 
-    protected function generateSchedules(Patient $patient, string $biteDate): void
+    protected function generateSchedules(Patient $patient, string $biteDate, int $doseCount = 4): void
     {
         $base = \Carbon\Carbon::parse($biteDate);
-        foreach (VaccinationSchedule::DOSE_DAYS as $index => $dayOffset) {
+        foreach (array_slice(VaccinationSchedule::DOSE_DAYS, 0, $doseCount) as $index => $dayOffset) {
             VaccinationSchedule::create([
                 'patient_id' => $patient->id,
                 'dose_number' => $index + 1,
@@ -172,6 +175,20 @@ class PatientApiController extends Controller
                 'status' => 'scheduled',
             ]);
         }
+    }
+
+    protected function availableVaccineTypes(): array
+    {
+        return VaccineInventory::where('quantity', '>', 0)
+            ->where('expiration_date', '>=', now()->toDateString())
+            ->pluck('vaccine_name')
+            ->unique()
+            ->reject(fn (string $name) => (bool) preg_match(
+                '/\b(?:equi[\s-]?rab|(?:human|equine)\s+rabies\s+(?:immunoglobulin|serum)|anti[- ]rabies\s+serum|rabies\s+(?:immunoglobulin|immune\s+globulin)|(?:hrig|erig|rig))\b/i',
+                $name
+            ))
+            ->values()
+            ->all();
     }
 }
 

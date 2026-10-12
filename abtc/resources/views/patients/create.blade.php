@@ -138,6 +138,38 @@
                 </div>
                 </section>
 
+                {{-- Clinical vaccination plan is selected by staff at registration. --}}
+                <section class="rounded-lg border border-sky-200 bg-sky-50 p-5">
+                    <div class="mb-2">
+                        <h3 class="font-semibold text-slate-900">Vaccination Plan</h3>
+                        <p class="mt-1 text-sm text-slate-700">Review the animal and exposure details, then record the vaccine and dose schedule ordered by the healthcare provider. Animal type alone does not determine the regimen.</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <x-input-label for="vaccine_type" value="Vaccine Type" />
+                            <select id="vaccine_type" name="vaccine_type" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
+                                <option value="">Select stocked vaccine</option>
+                                @foreach ($vaccineTypes as $type)
+                                    <option value="{{ $type }}" {{ old('vaccine_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
+                                @endforeach
+                            </select>
+                            @if (empty($vaccineTypes))
+                                <p class="mt-1 text-sm text-rose-700">No eligible vaccine is in stock. Update Inventory before registering the vaccination plan.</p>
+                            @endif
+                            <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="planned_dose_count" value="Number of Doses in Provider-Ordered Schedule" />
+                            <select id="planned_dose_count" name="planned_dose_count" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
+                                <option value="">Select the ordered schedule</option>
+                                <option value="3" {{ old('planned_dose_count') === '3' ? 'selected' : '' }}>3 doses — Day 0, Day 3, Day 7</option>
+                                <option value="4" {{ old('planned_dose_count', '4') === '4' ? 'selected' : '' }}>4 doses — Day 0, Day 3, Day 7, Day 28</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('planned_dose_count')" class="mt-2" />
+                        </div>
+                    </div>
+                </section>
+
                 {{-- Ticket generation is required before registration can be submitted. --}}
                 <div class="border-t pt-4" data-regular-ticket="{{ $nextRegularTicketNumber }}" data-priority-ticket="{{ $nextPriorityTicketNumber }}">
                     <input type="hidden" id="register_queue" name="register_queue" value="{{ old('register_queue') ? '1' : '' }}">
