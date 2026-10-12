@@ -164,17 +164,99 @@
                     </table>
                 </div>
             </div>
+
+            @php
+                $registrationTicket = $patient->tickets->sortByDesc('created_at')->first();
+                $administeredDoses = $patient->vaccinationSchedules->where('status', 'administered')->sortBy('dose_number');
+                $nextScheduledDose = $patient->vaccinationSchedules
+                    ->where('status', 'scheduled')
+                    ->reject(fn ($dose) => $dose->scheduled_date->lt(now()->startOfDay()))
+                    ->sortBy('scheduled_date')
+                    ->first();
+            @endphp
+
+            <div class="no-print flex justify-end">
+                <button type="button" onclick="printMiniTicket()" class="bg-[#176b9c] text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-[#11567f] transition-colors">
+                    Print Mini Ticket
+                </button>
+            </div>
+
+            <article id="mini-ticket-card" class="mini-ticket-card bg-white border-2 border-slate-800 rounded-lg p-4 text-black">
+                <header class="flex items-start justify-between gap-3 border-b border-slate-300 pb-2">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-[#176b9c]">Animal Bite Treatment Center</p>
+                        <h2 class="text-sm font-extrabold">Patient Registration &amp; Service Record</h2>
+                        <p class="text-[10px]">ABTC</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] uppercase tracking-wide text-slate-600">Queue Ticket</p>
+                        <p class="text-xl font-black leading-tight">{{ $registrationTicket?->ticket_number ?? '—' }}</p>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 py-2 text-[10px]">
+                    <p class="col-span-2"><span class="font-bold">Patient:</span> {{ $patient->fullName() }}</p>
+                    <p><span class="font-bold">Patient ID:</span> {{ $patient->id }}</p>
+                    <p><span class="font-bold">Registered:</span> {{ $patient->created_at->format('M d, Y') }}</p>
+                    <p><span class="font-bold">Patient type:</span> {{ $patient->patientTypeLabel() }}</p>
+                    <p><span class="font-bold">Doses administered:</span> {{ $administeredDoses->count() }}</p>
+                    @if ($administeredDoses->isNotEmpty())
+                        <p class="col-span-2"><span class="font-bold">Vaccination service:</span>
+                            @foreach ($administeredDoses as $dose)
+                                Dose {{ $dose->dose_number }}{{ $dose->administered_at ? ' on '.$dose->administered_at->format('M d, Y') : '' }}{{ $loop->last ? '' : '; ' }}
+                            @endforeach
+                        </p>
+                    @else
+                        <p class="col-span-2"><span class="font-bold">Vaccination service:</span> No dose recorded as administered yet.</p>
+                    @endif
+                    @if ($nextScheduledDose)
+                        <p class="col-span-2"><span class="font-bold">Next scheduled dose:</span> Dose {{ $nextScheduledDose->dose_number }} &middot; {{ $nextScheduledDose->scheduled_date->format('M d, Y') }}</p>
+                    @endif
+                </div>
+
+                <footer class="border-t border-slate-300 pt-2 text-[9px] text-slate-700">
+                    Present this card at ABTC for follow-up services. It records the registration and vaccination doses listed above.
+                </footer>
+            </article>
         </div>
     </div>
 
     @push('scripts')
     <style media="print">
+        @page { size: auto; margin: 12mm; }
         body * { visibility: hidden; }
         .max-w-5xl, .max-w-5xl * { visibility: visible; }
         .max-w-5xl { position: absolute; left: 0; top: 0; width: 100%; }
         .no-print { display: none !important; }
         button { display: none !important; }
         a[href] { text-decoration: underline; color: #000; }
+
+        @page mini-ticket { size: 90mm 60mm; margin: 0; }
+        body.print-mini-ticket * { visibility: hidden !important; }
+        body.print-mini-ticket #mini-ticket-card,
+        body.print-mini-ticket #mini-ticket-card * { visibility: visible !important; }
+        body.print-mini-ticket #mini-ticket-card {
+            page: mini-ticket;
+            position: fixed;
+            inset: 0 auto auto 0;
+            box-sizing: border-box;
+            width: 90mm;
+            height: 60mm;
+            overflow: hidden;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 4mm;
+            font-family: Arial, sans-serif;
+        }
     </style>
+    <script>
+        function printMiniTicket() {
+            const resetPrintMode = () => document.body.classList.remove('print-mini-ticket');
+
+            document.body.classList.add('print-mini-ticket');
+            window.addEventListener('afterprint', resetPrintMode, { once: true });
+            window.print();
+        }
+    </script>
     @endpush
 </x-app-layout>
