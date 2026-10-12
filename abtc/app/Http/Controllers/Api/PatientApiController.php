@@ -55,7 +55,7 @@ class PatientApiController extends Controller
             'bite_site' => ['nullable', 'string', 'max:150'],
             'animal_status' => ['nullable', 'in:Healthy,Sick,Dead,Unknown'],
             'animal_vaccinated' => ['nullable', 'boolean'],
-            'register_queue' => ['nullable', 'boolean'],
+            'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:' . implode(',', Patient::patientTypes())],
         ]);
 
@@ -72,16 +72,13 @@ class PatientApiController extends Controller
                 'animal_vaccinated' => $request->boolean('animal_vaccinated'),
             ]);
 
-            $ticket = null;
-            if ($request->boolean('register_queue')) {
-                $ticketNumber = $this->nextTicketNumber($patient->isPriority());
-                $ticket = Ticket::create([
-                    'patient_id' => $patient->id,
-                    'ticket_number' => $ticketNumber,
-                    'status' => 'waiting',
-                    'is_priority' => $patient->isPriority(),
-                ]);
-            }
+            $ticketNumber = $this->nextTicketNumber($patient->isPriority());
+            $ticket = Ticket::create([
+                'patient_id' => $patient->id,
+                'ticket_number' => $ticketNumber,
+                'status' => 'waiting',
+                'is_priority' => $patient->isPriority(),
+            ]);
 
             $this->generateSchedules($patient, $data['date_of_bite']);
 

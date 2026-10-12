@@ -138,18 +138,24 @@
                 </div>
                 </section>
 
-                {{-- Queue Options --}}
-                <div class="border-t pt-4">
-                    <label class="inline-flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="register_queue" value="1" {{ old('register_queue') ? 'checked' : '' }} class="rounded border-slate-300 text-[#176b9c] focus:ring-[#176b9c]">
-                        <span class="text-sm font-medium text-black">Generate a queue ticket immediately after registration</span>
-                    </label>
+                {{-- Ticket generation is required before registration can be submitted. --}}
+                <div class="border-t pt-4" data-regular-ticket="{{ $nextRegularTicketNumber }}" data-priority-ticket="{{ $nextPriorityTicketNumber }}">
+                    <input type="hidden" id="register_queue" name="register_queue" value="{{ old('register_queue') ? '1' : '' }}">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button" id="generate-ticket" class="bg-emerald-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-emerald-800 transition-colors">
+                            Generate Ticket
+                        </button>
+                        <p id="ticket-generation-status" class="text-sm text-black" role="status" aria-live="polite">
+                            Generate a queue ticket before registering this patient.
+                        </p>
+                    </div>
+                    <x-input-error :messages="$errors->get('register_queue')" class="mt-2" />
                 </div>
 
                 {{-- Actions --}}
                 <div class="flex justify-end gap-3">
                     <a href="{{ route('patients.index') }}" class="px-4 py-2 text-black hover:underline">Cancel</a>
-                    <button type="submit" class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f] transition-colors">Register Patient</button>
+                    <button type="submit" id="register-patient" @disabled(! old('register_queue')) class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f] transition-colors disabled:cursor-not-allowed disabled:opacity-50">Register Patient</button>
                 </div>
             </form>
         </div>
@@ -178,6 +184,45 @@
         window.addEventListener('DOMContentLoaded', () => {
             const dob = document.getElementById('dob');
             if (dob && dob.value) calcAge(dob);
+
+            const form = document.querySelector('form[action="{{ route('patients.store') }}"]');
+            const patientType = document.getElementById('patient_type');
+            const ticketFlag = document.getElementById('register_queue');
+            const generateTicketButton = document.getElementById('generate-ticket');
+            const ticketStatus = document.getElementById('ticket-generation-status');
+            const registerPatientButton = document.getElementById('register-patient');
+            const ticketNumbers = generateTicketButton.closest('[data-regular-ticket]');
+
+            const resetTicketGeneration = () => {
+                ticketFlag.value = '';
+                registerPatientButton.disabled = true;
+                ticketStatus.textContent = 'Generate a queue ticket before registering this patient.';
+            };
+
+            if (ticketFlag.value === '1') {
+                registerPatientButton.disabled = false;
+                ticketStatus.textContent = 'Ticket generation confirmed. Register the patient to create the ticket.';
+            }
+
+            generateTicketButton.addEventListener('click', () => {
+                const isPriority = patientType.value !== 'regular';
+                const ticketNumber = isPriority
+                    ? ticketNumbers.dataset.priorityTicket
+                    : ticketNumbers.dataset.regularTicket;
+
+                ticketFlag.value = '1';
+                registerPatientButton.disabled = false;
+                ticketStatus.textContent = `Ticket ${ticketNumber} is ready. Register the patient to save the record and ticket.`;
+            });
+
+            patientType.addEventListener('change', resetTicketGeneration);
+            form.addEventListener('submit', event => {
+                if (ticketFlag.value !== '1') {
+                    event.preventDefault();
+                    ticketStatus.textContent = 'Click Generate Ticket before registering this patient.';
+                    generateTicketButton.focus();
+                }
+            });
 
             document.getElementById('barangay').addEventListener('change', function() {
                 const address = document.getElementById('address');
