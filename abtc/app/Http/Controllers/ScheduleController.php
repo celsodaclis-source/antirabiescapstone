@@ -9,6 +9,7 @@ use App\Models\VaccineInventory;
 use App\Services\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -47,19 +48,23 @@ class ScheduleController extends Controller
 
     public function edit(VaccinationSchedule $schedule): View
     {
-        $schedule->load('patient');
+        $schedule->load('patient.biteIncidents');
         $batches = VaccineInventory::where('quantity', '>', 0)
             ->where('expiration_date', '>=', now()->toDateString())
             ->orderBy('expiration_date')
-            ->get();
-        return view('schedules.edit', compact('schedule', 'batches'));
+            ->get()
+            ->reject(fn (VaccineInventory $batch) => $this->isImmunoglobulin($batch->vaccine_name))
+            ->values();
+        $vaccineTypes = $batches->pluck('vaccine_name')->unique()->values();
+
+        return view('schedules.edit', compact('schedule', 'batches', 'vaccineTypes'));
     }
 
     public function update(Request $request, VaccinationSchedule $schedule): RedirectResponse
     {
         $data = $request->validate([
             'scheduled_date' => ['required', 'date'],
-            'status' => ['required', 'in:scheduled,administered,missed'],
+            'status' => ['required', Rule::in($schedule->status === 'administered' ? ['administered'] : ['scheduled', 'missed'])],
         ]);
 
         $schedule->update($data);
@@ -75,15 +80,20 @@ class ScheduleController extends Controller
         }
 
         $data = $request->validate([
+            'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes())],
             'inventory_id' => ['required', 'exists:vaccine_inventory,id'],
         ]);
 
         // Atomically deduct inventory and record the dose.
         return DB::transaction(function () use ($schedule, $data) {
-            $batch = VaccineInventory::lockForUpdate()->find($data['inventory_id']);
+            $batch = VaccineInventory::lockForUpdate()
+                ->where('vaccine_name', $data['vaccine_type'])
+                ->where('quantity', '>', 0)
+                ->where('expiration_date', '>=', now()->toDateString())
+                ->find($data['inventory_id']);
 
-            if (! $batch || $batch->quantity <= 0) {
-                return back()->with('status', 'Selected vaccine batch is out of stock.')->withInput();
+            if (! $batch || $this->isImmunoglobulin($batch->vaccine_name)) {
+                return back()->withErrors(['inventory_id' => 'Select an in-stock, unexpired batch matching the vaccine type.'])->withInput();
             }
 
             $batch->decrement('quantity');
@@ -111,5 +121,24 @@ class ScheduleController extends Controller
             ->paginate(20);
 
         return view('schedules.overdue', compact('overdue'));
+    }
+
+    protected function availableVaccineTypes(): array
+    {
+        return VaccineInventory::where('quantity', '>', 0)
+            ->where('expiration_date', '>=', now()->toDateString())
+            ->pluck('vaccine_name')
+            ->unique()
+            ->reject(fn (string $name) => $this->isImmunoglobulin($name))
+            ->values()
+            ->all();
+    }
+
+    protected function isImmunoglobulin(string $productName): bool
+    {
+        return (bool) preg_match(
+            '/\b(?:equi[\s-]?rab|(?:human|equine)\s+rabies\s+(?:immunoglobulin|serum)|anti[- ]rabies\s+serum|rabies\s+(?:immunoglobulin|immune\s+globulin)|(?:hrig|erig|rig))\b/i',
+            $productName
+        );
     }
 }

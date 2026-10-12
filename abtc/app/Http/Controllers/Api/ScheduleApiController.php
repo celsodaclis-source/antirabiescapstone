@@ -10,6 +10,7 @@ use App\Services\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ScheduleApiController extends Controller
 {
@@ -60,14 +61,19 @@ class ScheduleApiController extends Controller
         }
 
         $data = $request->validate([
+            'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes())],
             'inventory_id' => ['required', 'exists:vaccine_inventory,id'],
         ]);
 
         return DB::transaction(function () use ($schedule, $data) {
-            $batch = VaccineInventory::lockForUpdate()->find($data['inventory_id']);
+            $batch = VaccineInventory::lockForUpdate()
+                ->where('vaccine_name', $data['vaccine_type'])
+                ->where('quantity', '>', 0)
+                ->where('expiration_date', '>=', now()->toDateString())
+                ->find($data['inventory_id']);
 
-            if (!$batch || $batch->quantity <= 0) {
-                return response()->json(['message' => 'Selected vaccine batch is out of stock.'], 422);
+            if (!$batch || $this->isImmunoglobulin($batch->vaccine_name)) {
+                return response()->json(['message' => 'Select an in-stock, unexpired batch matching the vaccine type.'], 422);
             }
 
             $batch->decrement('quantity');
@@ -86,6 +92,25 @@ class ScheduleApiController extends Controller
                 'message' => "Dose {$schedule->dose_number} administered from batch {$batch->batch_number}.",
             ]);
         });
+    }
+
+    protected function availableVaccineTypes(): array
+    {
+        return VaccineInventory::where('quantity', '>', 0)
+            ->where('expiration_date', '>=', now()->toDateString())
+            ->pluck('vaccine_name')
+            ->unique()
+            ->reject(fn (string $name) => $this->isImmunoglobulin($name))
+            ->values()
+            ->all();
+    }
+
+    protected function isImmunoglobulin(string $productName): bool
+    {
+        return (bool) preg_match(
+            '/\b(?:equi[\s-]?rab|(?:human|equine)\s+rabies\s+(?:immunoglobulin|serum)|anti[- ]rabies\s+serum|rabies\s+(?:immunoglobulin|immune\s+globulin)|(?:hrig|erig|rig))\b/i',
+            $productName
+        );
     }
 }
 
