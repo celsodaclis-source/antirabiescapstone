@@ -8,13 +8,24 @@
                 <a href="{{ route('dashboard') }}" class="bg-gray-200 text-black px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-300 transition-colors border border-gray-300">&larr; Back</a>
                 <div class="flex flex-wrap items-center gap-2 text-black flex-1">
                 @foreach (['all'=>'All','upcoming'=>'Upcoming','overdue'=>'Overdue','administered'=>'Administered','missed'=>'Missed'] as $key => $label)
-                    <a href="{{ route('schedules.index', ['filter' => $key]) }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ $filter === $key ? 'bg-indigo-600 text-white' : 'bg-white border text-black' }}">
+                    <a href="{{ route('schedules.index', ['filter' => $key, 'search' => $search]) }}" class="px-3 py-2.5 rounded-md text-sm font-medium {{ $filter === $key ? 'bg-indigo-600 text-white' : 'bg-white border text-black' }}">
                         {{ $label }}
                     </a>
                 @endforeach
                     <a href="{{ route('schedules.overdue') }}" class="px-3 py-2.5 rounded-md text-sm font-medium whitespace-nowrap bg-red-600 text-white sm:ml-auto">Overdue Alert ({{ $overdueCount }})</a>
                 </div>
             </div>
+
+            <form method="GET" action="{{ route('schedules.index') }}" class="flex flex-col gap-2 rounded-lg bg-white p-4 shadow sm:flex-row sm:items-center">
+                <input type="hidden" name="filter" value="{{ $filter }}">
+                <label for="patient-search" class="sr-only">Search patients by name</label>
+                <input id="patient-search" type="search" name="search" value="{{ $search }}" placeholder="Search patients by first, middle, or last name" class="w-full rounded-md border-gray-300 text-sm text-black shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:max-w-md">
+                <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Search</button>
+                @if ($search !== '')
+                    <a href="{{ route('schedules.index', ['filter' => $filter]) }}" class="text-sm text-indigo-700 hover:underline">Clear search</a>
+                @endif
+                <p class="text-xs text-gray-600 sm:ml-auto">Search results include each matching patient's doses and statuses. Select a name to open the full patient record.</p>
+            </form>
 
             <div class="overflow-x-auto rounded-lg bg-white shadow text-black">
                 <table class="w-full min-w-[850px] table-fixed text-sm">
@@ -48,7 +59,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="px-4 py-6 text-center text-black">No schedules found.</td></tr>
+                            <tr><td colspan="6" class="px-4 py-6 text-center text-black">{{ $search !== '' ? 'No vaccination schedules found for that patient name.' : 'No schedules found.' }}</td></tr>
                         @endforelse
                     </tbody>
                 </table>

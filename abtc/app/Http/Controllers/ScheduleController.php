@@ -18,9 +18,23 @@ class ScheduleController extends Controller
     public function index(Request $request): View
     {
         $filter = $request->input('filter', 'all');
+        $search = trim((string) $request->input('search', ''));
 
         $query = VaccinationSchedule::with(['patient', 'administeredBy', 'inventory'])
             ->orderBy('scheduled_date');
+
+        if ($search !== '') {
+            $searchTerms = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+            $query->whereHas('patient', function ($patientQuery) use ($searchTerms) {
+                foreach ($searchTerms as $term) {
+                    $patientQuery->where(function ($nameQuery) use ($term) {
+                        $nameQuery->where('first_name', 'like', "%{$term}%")
+                            ->orWhere('middle_name', 'like', "%{$term}%")
+                            ->orWhere('last_name', 'like', "%{$term}%");
+                    });
+                }
+            });
+        }
 
         if ($filter === 'upcoming') {
             $query->where('status', 'scheduled')->where('scheduled_date', '>=', now()->toDateString());
@@ -37,7 +51,7 @@ class ScheduleController extends Controller
         $overdueCount = VaccinationSchedule::where('status', 'scheduled')
             ->where('scheduled_date', '<', now()->toDateString())->count();
 
-        return view('schedules.index', compact('schedules', 'filter', 'overdueCount'));
+        return view('schedules.index', compact('schedules', 'filter', 'overdueCount', 'search'));
     }
 
     public function show(Patient $patient): View
