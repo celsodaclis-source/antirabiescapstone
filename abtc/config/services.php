@@ -43,7 +43,7 @@ return [
 
     'sms_gateway' => [
         'enabled' => env('SMS_GATEWAY_ENABLED', false),
-        'host' => env('SMS_GATEWAY_HOST', '192.168.50.122:8080'),
+        'host' => env('SMS_GATEWAY_HOST', 'https://api.sms-gate.app'),
         'username' => env('SMS_GATEWAY_USERNAME', 'sms'),
         'password' => env('SMS_GATEWAY_PASSWORD', ''),
         'device_id' => env('SMS_GATEWAY_DEVICE_ID', ''),

@@ -70,13 +70,26 @@
                     <h3 class="font-semibold text-black mb-3 text-black">SMS Log</h3>
                     <table class="w-full text-sm">
                         <thead class="text-left text-black">
-                            <tr><th class="text-black">Recipient</th><th class="text-black">Status</th><th class="text-black">When</th></tr>
+                                <tr><th class="text-black">Recipient</th><th class="text-black">Status / Gateway response</th><th class="text-black">When</th></tr>
                         </thead>
                         <tbody class="divide-y">
                             @forelse ($logs as $log)
                                 <tr>
                                     <td class="py-2 text-black">{{ $log->patient?->first_name ?? $log->recipient }}</td>
-                                    <td><x-status-badge :status="$log->status"></x-status-badge></td>
+                                    <td>
+                                        <x-status-badge :status="$log->status"></x-status-badge>
+                                        @if (in_array($log->status, ['failed', 'pending'], true))
+                                            @php $gatewayResponse = json_decode($log->response ?? '', true); @endphp
+                                            <p class="mt-1 max-w-sm break-words text-xs text-slate-600">
+                                                @if ($log->status === 'pending')
+                                                    Accepted by gateway; check the phone app for send status.
+                                                    @if (is_array($gatewayResponse) && !empty($gatewayResponse['id'])) Message ID: {{ $gatewayResponse['id'] }} @endif
+                                                @else
+                                                    {{ is_array($gatewayResponse) ? ($gatewayResponse['error'] ?? data_get($gatewayResponse, 'body.message') ?? data_get($gatewayResponse, 'body.error') ?? 'Gateway rejected or could not send the message.') : ($log->response ?: 'Gateway rejected or could not send the message.') }}
+                                                @endif
+                                            </p>
+                                        @endif
+                                    </td>
                                     <td class="text-black">{{ $log->created_at->diffForHumans() }}</td>
                                 </tr>
                             @empty

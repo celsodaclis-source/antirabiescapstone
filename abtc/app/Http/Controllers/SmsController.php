@@ -72,7 +72,7 @@ class SmsController extends Controller
         $message = $this->buildMessage($schedule, SystemSetting::get('sms_template', self::DEFAULT_TEMPLATE));
         $log = $this->dispatch($schedule->patient, $message);
 
-        return back()->with('status', "SMS to {$schedule->patient->fullName()}: {$log->status}.");
+        return back()->with('status', $this->sendStatusMessage($schedule->patient, $log));
     }
 
     public function sendToPatient(Patient $patient): RedirectResponse
@@ -95,7 +95,7 @@ class SmsController extends Controller
         $message = $this->buildMessage($next, SystemSetting::get('sms_template', self::DEFAULT_TEMPLATE));
         $log = $this->dispatch($patient, $message);
 
-        return back()->with('status', "SMS to {$patient->fullName()}: {$log->status}.");
+        return back()->with('status', $this->sendStatusMessage($patient, $log));
     }
 
     public function sendOverdue(): RedirectResponse
@@ -114,7 +114,7 @@ class SmsController extends Controller
             }
         }
 
-        return back()->with('status', "Sent {$count} reminder SMS to overdue patients.");
+        return back()->with('status', "Submitted {$count} reminder SMS to the gateway for overdue patients.");
     }
 
     public function testConnection(): RedirectResponse
@@ -204,5 +204,14 @@ class SmsController extends Controller
         Audit::log('sms.send', "SMS to {$patient->fullName()} -> {$log->status}", $log);
 
         return $log;
+    }
+
+    protected function sendStatusMessage(Patient $patient, SmsLog $log): string
+    {
+        return match ($log->status) {
+            'delivered' => "SMS to {$patient->fullName()} was delivered.",
+            'pending' => "SMS to {$patient->fullName()} was accepted by the gateway and is pending. Check the phone app for its send status.",
+            default => "SMS to {$patient->fullName()} failed. Check the SMS log for the gateway error.",
+        };
     }
 }

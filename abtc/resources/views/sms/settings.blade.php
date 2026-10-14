@@ -40,7 +40,7 @@
                     <div class="max-w-xl">
                         <p class="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-blue-700"><x-icon name="radio" class="h-4 w-4" />Connection details</p>
                         <h2 class="mt-1 text-lg font-bold text-slate-900">SMS Gateway Configuration</h2>
-                        <p class="mt-1.5 text-sm leading-5 text-slate-600">Connect the system to the SMS Gateway service running on your Android phone.</p>
+                        <p class="mt-1.5 text-sm leading-5 text-slate-600">Connect this Railway-hosted system to the SMS Gateway app on your Android phone through its Cloud Server or a publicly reachable server.</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-sm font-semibold text-slate-800">Enable gateway</span>
@@ -54,9 +54,9 @@
                             <label for="host" class="block text-sm font-semibold text-slate-800">Gateway address <span class="text-red-600">*</span></label>
                             <div class="mt-1.5 flex rounded-md shadow-sm">
                                 <span class="inline-flex items-center gap-1.5 rounded-l-md border border-r-0 border-slate-300 bg-slate-50 px-3 text-sm text-slate-500"><x-icon name="link" class="h-4 w-4" />URL</span>
-                                <input id="host" name="host" type="text" value="{{ old('host', $settings['host']) }}" placeholder="10.0.0.5:8080" required class="min-w-0 flex-1 rounded-r-md border-slate-300 text-sm shadow-none focus:border-blue-500 focus:ring-blue-500">
+                                <input id="host" name="host" type="text" value="{{ old('host', $settings['host']) }}" placeholder="https://api.sms-gate.app" required class="min-w-0 flex-1 rounded-r-md border-slate-300 text-sm shadow-none focus:border-blue-500 focus:ring-blue-500">
                             </div>
-                            <p class="mt-1.5 text-xs text-slate-500">Use the current Local address shown in the phone app, including port 8080. The system adds <code class="rounded bg-slate-100 px-1">http://</code> automatically.</p>
+                            <p class="mt-1.5 text-xs text-slate-500">For SMS Gateway Cloud Server, use <code class="rounded bg-slate-100 px-1">https://api.sms-gate.app</code>. A private Local address such as <code class="rounded bg-slate-100 px-1">192.168.x.x</code> is not reachable from Railway. Include <code>https://</code> for cloud endpoints.</p>
                             @error('host') <p class="mt-1 text-xs text-red-700">{{ $message }}</p> @enderror
                         </div>
 
@@ -133,11 +133,11 @@
                     </div>
                     <ol class="space-y-4 p-4">
                         @foreach ([
-                            'Start the Local server in the SMS Gateway app.',
-                            'Copy the phone’s current Local address and port.',
-                            'Keep this computer and phone on the same Wi-Fi.',
-                            'Save the address and gateway credentials here.',
-                            'Test the connection, then send a test SMS.',
+                            'Enable Cloud Server in the SMS Gateway app and sign in.',
+                            'Enter https://api.sms-gate.app as the Gateway address.',
+                            'Enter the Cloud Server account username and password.',
+                            'Save settings and use Test Connection; confirm the phone is online.',
+                            'Send a test SMS to a number you can check.',
                         ] as $step)
                             <li class="flex items-start gap-3 text-sm leading-5 text-slate-700">
                                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-700 text-xs font-bold text-white">{{ $loop->iteration }}</span>
@@ -145,7 +145,7 @@
                             </li>
                         @endforeach
                     </ol>
-                    <p class="border-t border-slate-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">The phone’s public address requires its Cloud server to be enabled. For Local server mode, use the private Wi-Fi address shown by the app.</p>
+                    <p class="border-t border-slate-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">Railway cannot reach a phone’s private Wi-Fi Local address. Use the app’s Cloud Server or host a gateway at an address publicly reachable from Railway.</p>
                 </section>
             </aside>
         </div>

@@ -66,7 +66,7 @@ class SendDoseReminders extends Command
             $sent++;
         }
 
-        $this->info("Sent {$sent} reminder SMS.");
+        $this->info("Submitted {$sent} reminder SMS to the gateway.");
         return self::SUCCESS;
     }
 }

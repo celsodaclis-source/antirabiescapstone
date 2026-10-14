@@ -94,10 +94,19 @@ class SmsGateway
             }
 
             if ($response->successful()) {
+                $body = $this->decode($response, $url);
+                $gatewayState = is_array($body) ? strtolower((string) ($body['state'] ?? '')) : '';
+
                 return [
                     'success' => true,
-                    'status' => 'delivered',
-                    'response' => $this->decode($response, $url),
+                    // A successful API response means the gateway accepted the
+                    // request; only a delivery state confirms receipt by the handset.
+                    'status' => match ($gatewayState) {
+                        'delivered' => 'delivered',
+                        'failed' => 'failed',
+                        default => 'pending',
+                    },
+                    'response' => $body,
                 ];
             }
 
@@ -221,7 +230,7 @@ class SmsGateway
     {
         return [
             'enabled' => self::castBool(SystemSetting::get('sms_gateway_enabled', env('SMS_GATEWAY_ENABLED', false))),
-            'host' => (string) SystemSetting::get('sms_gateway_host', env('SMS_GATEWAY_HOST', '192.168.50.122:8080')),
+            'host' => (string) SystemSetting::get('sms_gateway_host', env('SMS_GATEWAY_HOST', 'https://api.sms-gate.app')),
             'username' => (string) SystemSetting::get('sms_gateway_username', env('SMS_GATEWAY_USERNAME', 'sms')),
             'password' => (string) SystemSetting::get('sms_gateway_password', env('SMS_GATEWAY_PASSWORD', '')),
             'device_id' => (string) SystemSetting::get('sms_gateway_device_id', env('SMS_GATEWAY_DEVICE_ID', '')),
