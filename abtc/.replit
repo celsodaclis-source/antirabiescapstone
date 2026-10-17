@@ -1,0 +1,13 @@
+run = "php artisan serve --host 0.0.0.0 --port 8000"
+entrypoint = "artisan"
+
+[anguages]
+  [nix]
+  channel = "stable-23_11"
+
+[env]
+  DB_CONNECTION = "sqlite"
+
+[tool]
+  [tool.php]
+    version = "8.2"

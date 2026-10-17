@@ -1,0 +1,6 @@
+{
+    "require": {
+        "laravel/sanctum": "*",
+        "barryvdh/laravel-dompdf": "^3.1"
+    }
+}

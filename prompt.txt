@@ -1,0 +1,137 @@
+```
+Build a web application called "N-VISION: A Data-Driven Ticketing System for
+Optimized Anti-Rabies Vaccination Management" for the Mandaluyong City Animal
+Bite Treatment Center (ABTC), a Philippine local government health facility.
+
+TECH STACK (use exactly this — do not substitute):
+- Backend: PHP 8+ using the Laravel framework
+- Database: MySQL (or MariaDB) via Laravel Eloquent ORM
+- Frontend: Blade templates + HTML, CSS, vanilla JavaScript (add Bootstrap 5
+  or Tailwind CSS for styling — your choice, keep it clean and simple)
+- Auth: Laravel Breeze or Laravel's built-in auth scaffolding, extended with
+  role-based access control (roles: Admin/IT Support, Doctor, Nurse,
+  Administrative Staff)
+- SMS Gateway: integrate via a Semaphore SMS API wrapper (use environment
+  variables for the API key so it's easy to swap providers later)
+- Deployment target: should run standalone on Replit for demo purposes, but
+  structure the code so it could later be deployed on an Apache/Nginx LGU
+  server with MySQL
+
+CONTEXT / PROBLEM BEING SOLVED:
+The ABTC currently runs on paper-based patient registration, manual
+vaccination scheduling, and manual inventory tracking, causing long patient
+waiting times, lost records, missed follow-up doses, and slow DOH/LGU
+reporting. This system replaces that manual workflow.
+
+BUILD THE FOLLOWING SIX CORE MODULES:
+
+1. PATIENT REGISTRATION & RECORDS MODULE
+   - Register new patients with: last name, first name, middle name, date of
+     birth, sex, contact number, home address, barangay
+   - Record animal bite incident details: date of bite, animal type, category
+     of exposure (I/II/III), site of bite, animal status, whether the animal
+     was vaccinated
+   - Search existing patients by name to avoid duplicate records
+   - Store full vaccination history per patient
+
+2. TICKET QUEUE MANAGEMENT MODULE
+   - Auto-generate a queue ticket number immediately after patient
+     registration (format like A-001, A-002...)
+   - "Now Serving" display showing current ticket, assigned counter, and
+     assigned staff
+   - Queue list showing all waiting/in-progress/served tickets with status
+     and time-in-queue
+   - Staff actions: Call Next, Call Specific Ticket, Hold Ticket, Close/
+     Complete Ticket
+   - Counter status panel (idle / serving) for multiple service counters
+   - Use polling (every 5-10 seconds) or Laravel Echo/WebSockets if easy to
+     set up, so the queue view updates without a full page refresh
+
+3. VACCINATION SCHEDULING & DOSE MONITORING MODULE
+   - Auto-schedule multi-dose PEP (Post-Exposure Prophylaxis) follow-up doses
+     based on standard WHO/DOH rabies vaccination protocol (Day 0, 3, 7, 28)
+   - Show upcoming vaccination schedule per patient
+   - Allow staff to reschedule appointments
+   - Track which doses have been administered vs. missed
+   - Flag/alert patients who are overdue for a follow-up dose
+
+4. VACCINE INVENTORY MONITORING MODULE
+   - Track vaccine stock by batch number, quantity, and expiration date
+   - Auto-deduct stock quantity each time a dose is administered and recorded
+   - Generate a low-stock alert when quantity falls below a configurable
+     minimum threshold
+   - Generate an expiration warning for batches nearing their expiry date
+   - Allow authorized staff (Admin/IT, Nurse) to add new stock batches
+
+5. AUTOMATED SMS REMINDER MODULE
+   - Send an SMS reminder to the patient's registered contact number a
+     configurable number of hours/days before their scheduled dose
+   - Log every SMS attempt with status: Delivered / Failed / Pending
+   - Allow staff to manually trigger a reminder SMS to a specific patient
+   - Provide an editable message template (e.g. "Dear {patient_name}, this is
+     a reminder for your anti-rabies vaccination (Dose {dose_number})
+     scheduled on {date} at {time}. Please bring this SMS and your
+     vaccination card.")
+
+6. REPORTING DASHBOARD MODULE
+   - Main dashboard showing: patients registered today, current queue count,
+     total vaccines in stock, pending/overdue follow-ups (as KPI cards)
+   - A simple bar/line chart of patient volume over the current month
+   - Generate exportable reports (CSV or PDF) summarizing: patients served,
+     vaccinations administered, inventory usage, and missed appointments —
+     for a selected date range, intended for submission to the LGU Health
+     Office and DOH
+
+NON-FUNCTIONAL / QUALITY REQUIREMENTS (based on ISO/IEC 25010):
+- Functional Suitability: every module above must be fully working, not a
+  placeholder/mockup
+- Performance Efficiency: queue and dashboard views should update quickly
+  without noticeable lag
+- Usability: simple, role-based dashboard views; clear navigation sidebar;
+  color-coded ticket statuses (e.g. green = served, yellow = waiting, red =
+  overdue); form validation with clear error messages
+- Reliability: use database transactions where relevant (e.g. inventory
+  deduction + dose recording should happen atomically) so data isn't
+  corrupted if something fails mid-operation
+- Security: role-based access control so only authorized roles can access
+  certain modules (e.g. only Admin/IT can manage user accounts and system
+  settings); passwords hashed via Laravel's built-in hashing; log key user
+  actions (who registered a patient, who administered a dose, who edited
+  inventory) in an audit trail table for accountability, in line with the
+  Philippine Data Privacy Act of 2012 (RA 10173)
+
+DATABASE SCHEMA (Laravel migrations) — please generate migrations and
+Eloquent models for at least these tables:
+- users (id, name, email, password, role, contact_number, timestamps)
+- patients (id, first_name, last_name, middle_name, dob, sex, contact_number,
+  address, barangay, timestamps)
+- bite_incidents (id, patient_id FK, date_of_bite, animal_type,
+  exposure_category, bite_site, animal_status, animal_vaccinated, timestamps)
+- tickets (id, patient_id FK, ticket_number, status, counter_assigned,
+  called_at, served_at, completed_at, timestamps)
+- vaccination_schedules (id, patient_id FK, dose_number, scheduled_date,
+  status [scheduled/administered/missed], administered_at, timestamps)
+- vaccine_inventory (id, batch_number, vaccine_name, quantity, expiration_date,
+  received_date, timestamps)
+- sms_logs (id, patient_id FK, message, status, sent_at, timestamps)
+- audit_logs (id, user_id FK, action, description, created_at)
+
+UI/UX NOTES:
+- Login page: simple centered card with username/email, password, and role
+  dropdown, labeled "N-VISION — Anti-Rabies Vaccination Management System,
+  Mandaluyong City ABTC"
+- Sidebar navigation present on every authenticated page: Dashboard, Patient
+  Registration, Queue Management, Vaccination Scheduling, Inventory, SMS
+  Reminders, Reports, (Users/Settings for Admin only)
+- Keep the interface simple enough for staff with low digital literacy:
+  large clear buttons, minimal clutter, obvious primary actions
+
+SEED DATA:
+Please seed the database with:
+- 4 demo users, one per role (Admin, Doctor, Nurse, Administrative Staff)
+  with simple passwords like "password123" for demo purposes
+- 10-15 sample patients with bite incidents at various exposure categories
+- A few vaccine inventory batches, including one near its expiration date and
+  one below the low-stock threshold, so the alerts are visible immediately
+- A handful of tickets in different queue statuses so the queue view isn't
+  empty on first load
