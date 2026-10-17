@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
 use App\Models\VaccineInventory;
 use App\Services\Audit;
+use App\Services\QueueTicketNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,7 @@ class PatientApiController extends Controller
             'bite_site' => ['nullable', 'string', 'max:150'],
             'animal_status' => ['nullable', 'in:Healthy,Sick,Dead,Unknown'],
             'animal_vaccinated' => ['nullable', 'boolean'],
+            'requires_medical_review' => ['nullable', 'boolean'],
             'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:' . implode(',', Patient::patientTypes())],
             'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
@@ -75,13 +77,7 @@ class PatientApiController extends Controller
                 'animal_vaccinated' => $request->boolean('animal_vaccinated'),
             ]);
 
-            $ticketNumber = $this->nextTicketNumber($patient->isPriority());
-            $ticket = Ticket::create([
-                'patient_id' => $patient->id,
-                'ticket_number' => $ticketNumber,
-                'status' => 'waiting',
-                'is_priority' => $patient->isPriority(),
-            ]);
+            $ticket = QueueTicketNumber::forNewPatient($patient, $request->boolean('requires_medical_review'));
 
             $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
 
@@ -150,18 +146,7 @@ class PatientApiController extends Controller
 
     protected function nextTicketNumber(bool $isPriority = false): string
     {
-        $prefix = $isPriority ? 'P' : 'A';
-        $last = Ticket::where('ticket_number', 'like', $prefix . '-%')
-            ->orderByDesc('ticket_number')
-            ->value('ticket_number');
-
-        if (!$last) return $prefix . '-001';
-
-        if (preg_match('/^([A-Z]+)-(\d+)$/', $last, $m)) {
-            $num = (int) $m[2] + 1;
-            return $prefix . '-' . str_pad($num, 3, '0', STR_PAD_LEFT);
-        }
-        return $prefix . '-001';
+        return QueueTicketNumber::next($isPriority);
     }
 
     protected function generateSchedules(Patient $patient, string $biteDate, int $doseCount = 4): void

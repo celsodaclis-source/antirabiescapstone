@@ -3,27 +3,57 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\VaccinationSchedule;
 use App\Services\Audit;
+use App\Services\QueueTicketNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class QueueController extends Controller
 {
+    public function queueSchedule(VaccinationSchedule $schedule): RedirectResponse
+    {
+        [$ticket, $message] = DB::transaction(function () use ($schedule) {
+            $lockedSchedule = VaccinationSchedule::lockForUpdate()->findOrFail($schedule->id);
+            if (! in_array($lockedSchedule->status, ['scheduled', 'missed'], true)) {
+                return [null, 'Only a scheduled or missed dose can be added to the queue.'];
+            }
+            if ($lockedSchedule->scheduled_date->gt(today())) {
+                return [null, 'This dose is not due yet and cannot be queued.'];
+            }
+            if (VaccinationSchedule::where('patient_id', $lockedSchedule->patient_id)
+                ->where('dose_number', '<', $lockedSchedule->dose_number)
+                ->where('status', '!=', 'administered')->exists()) {
+                return [null, 'Complete earlier doses before queueing this scheduled dose.'];
+            }
+            $activeTicket = Ticket::where('vaccination_schedule_id', $lockedSchedule->id)
+                ->whereIn('status', ['waiting', 'called', 'in_progress', 'held'])->exists();
+            if ($activeTicket) return [null, 'This dose already has an active queue ticket.'];
+
+            return [QueueTicketNumber::forReturningPatient($lockedSchedule->patient, $lockedSchedule), null];
+        });
+        if (! $ticket) return back()->with('status', $message);
+        Audit::log('queue.returning_patient', "Queued returning patient for dose {$schedule->dose_number} ({$ticket->ticket_number})", $ticket);
+
+        return redirect()->route('queue.index')->with('status', "Returning patient queued as {$ticket->ticket_number} for dose {$schedule->dose_number}.");
+    }
+
     public function index(): View
     {
-        $nowServing = Ticket::with(['patient', 'assignedStaff'])
+        $nowServing = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->whereIn('status', ['called', 'in_progress'])
             ->orderBy('called_at')
             ->get();
 
-        $waiting = Ticket::with('patient')
+        $waiting = Ticket::with(['patient', 'vaccinationSchedule'])
             ->where('status', 'waiting')
             ->priorityFirst()
             ->get();
 
-        $held = Ticket::with(['patient', 'assignedStaff'])
+        $held = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->where('status', 'held')
             ->orderBy('updated_at')
             ->get();
@@ -48,17 +78,17 @@ class QueueController extends Controller
 
     public function data(): JsonResponse
     {
-        $nowServing = Ticket::with(['patient', 'assignedStaff'])
+        $nowServing = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->whereIn('status', ['called', 'in_progress'])
             ->orderBy('called_at')
             ->get();
 
-        $waiting = Ticket::with('patient')
+        $waiting = Ticket::with(['patient', 'vaccinationSchedule'])
             ->where('status', 'waiting')
             ->priorityFirst()
             ->get();
 
-        $held = Ticket::with(['patient', 'assignedStaff'])
+        $held = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->where('status', 'held')
             ->orderBy('updated_at')
             ->get();
@@ -89,30 +119,24 @@ class QueueController extends Controller
 
     public function callNext(Request $request): RedirectResponse
     {
-        $counter = (int) $request->input('counter', 1);
+        $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
+        $counter = (int) ($data['counter'] ?? 1);
 
-        // If a ticket is already being served at this counter, leave it.
-        $already = Ticket::where('counter_assigned', $counter)
-            ->whereIn('status', ['called', 'in_progress'])
-            ->first();
-        if ($already) {
-            return back()->with('status', "Counter {$counter} is already serving {$already->ticket_number}.");
-        }
+        [$next, $message] = DB::transaction(function () use ($counter) {
+            $already = Ticket::where('counter_assigned', $counter)
+                ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($already) return [null, "Counter {$counter} is already serving {$already->ticket_number}."];
 
-        $next = Ticket::where('status', 'waiting')
-            ->priorityFirst()
-            ->first();
+            $next = Ticket::where('status', 'waiting')->priorityFirst()->lockForUpdate()->first();
+            if (! $next) return [null, 'No waiting tickets in the queue.'];
 
-        if (! $next) {
-            return back()->with('status', 'No waiting tickets in the queue.');
-        }
-
-        $next->update([
-            'status' => 'called',
-            'counter_assigned' => $counter,
-            'assigned_staff_id' => auth()->id(),
-            'called_at' => now(),
-        ]);
+            $next->update([
+                'status' => 'called', 'counter_assigned' => $counter,
+                'assigned_staff_id' => auth()->id(), 'called_at' => now(),
+            ]);
+            return [$next, null];
+        });
+        if (! $next) return back()->with('status', $message);
 
         Audit::log('queue.call_next', "Called next ticket {$next->ticket_number} to counter {$counter}", $next);
 
@@ -121,18 +145,25 @@ class QueueController extends Controller
 
     public function callSpecific(Ticket $ticket, Request $request): RedirectResponse
     {
-        $counter = (int) $request->input('counter', $ticket->counter_assigned ?? 1);
+        $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
+        $counter = (int) ($data['counter'] ?? $ticket->counter_assigned ?? 1);
 
-        if (! in_array($ticket->status, ['waiting', 'held'])) {
-            return back()->with('status', "Ticket {$ticket->ticket_number} cannot be called (status: {$ticket->status}).");
-        }
+        $message = DB::transaction(function () use ($ticket, $counter) {
+            $lockedTicket = Ticket::lockForUpdate()->findOrFail($ticket->id);
+            if ($lockedTicket->status !== 'held') {
+                return "Ticket {$lockedTicket->ticket_number} cannot be called (status: {$lockedTicket->status}).";
+            }
+            $already = Ticket::where('counter_assigned', $counter)
+                ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($already) return "Counter {$counter} is already serving {$already->ticket_number}.";
 
-        $ticket->update([
-            'status' => 'called',
-            'counter_assigned' => $counter,
-            'assigned_staff_id' => auth()->id(),
-            'called_at' => now(),
-        ]);
+            $lockedTicket->update([
+                'status' => 'called', 'counter_assigned' => $counter,
+                'assigned_staff_id' => auth()->id(), 'called_at' => now(),
+            ]);
+            return null;
+        });
+        if ($message) return back()->with('status', $message);
 
         Audit::log('queue.call_specific', "Called ticket {$ticket->ticket_number} to counter {$counter}", $ticket);
 
@@ -141,7 +172,7 @@ class QueueController extends Controller
 
     public function serve(Ticket $ticket): RedirectResponse
     {
-        if (! in_array($ticket->status, ['called', 'in_progress', 'held'])) {
+        if (! in_array($ticket->status, ['called', 'in_progress'], true)) {
             return back()->with('status', 'Ticket must be called before serving.');
         }
 
@@ -174,6 +205,12 @@ class QueueController extends Controller
 
     public function complete(Ticket $ticket): RedirectResponse
     {
+        if (! in_array($ticket->status, ['called', 'in_progress'], true)) {
+            return back()->with('status', 'Only a called or currently serving ticket can be completed.');
+        }
+        if ($ticket->vaccination_schedule_id && $ticket->vaccinationSchedule?->status !== 'administered') {
+            return back()->with('status', 'Administer the linked dose before completing this follow-up ticket.');
+        }
         $ticket->update([
             'status' => 'completed',
             'completed_at' => now(),

@@ -21,19 +21,29 @@ class DashboardController extends Controller
         // ── Common KPIs ──
         $patientsToday = Patient::whereDate('created_at', $today)->count();
         $queueCount = Ticket::whereIn('status', ['waiting', 'called', 'in_progress', 'held'])->count();
+        $waitingPatients = Ticket::where('status', 'waiting')->count();
+        $currentlyServing = Ticket::where('status', 'in_progress')->count();
+        $completedPatients = Ticket::where('status', 'completed')->whereDate('completed_at', $today)->count();
+        $upcomingVaccinations = VaccinationSchedule::where('status', 'scheduled')
+            ->whereDate('scheduled_date', '>=', $today)
+            ->whereDate('scheduled_date', '<=', $today->copy()->addDays(7))
+            ->count();
+        $overdueDoseCount = VaccinationSchedule::whereIn('status', ['scheduled', 'missed'])
+            ->whereDate('scheduled_date', '<', $today)->count();
+        $vaccineStockAlerts = VaccineInventory::whereRaw('quantity <= low_stock_threshold')->count();
         $totalStock = VaccineInventory::sum('quantity');
         $pendingFollowups = VaccinationSchedule::where('status', 'scheduled')
             ->where('scheduled_date', '<=', $today)->count();
 
         // ── Overdue doses (relevant to all roles) ──
         $overdue = VaccinationSchedule::with('patient')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<', $today)
             ->orderBy('scheduled_date')
             ->get();
 
         // ── Active queue (relevant to all roles) ──
-        $recentTickets = Ticket::with(['patient', 'assignedStaff'])
+        $recentTickets = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->whereIn('status', ['waiting', 'called', 'in_progress', 'held'])
             ->orderBy('created_at')
             ->take(8)
@@ -98,6 +108,8 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'role',
             'patientsToday', 'queueCount', 'totalStock', 'pendingFollowups',
+            'waitingPatients', 'currentlyServing', 'completedPatients', 'upcomingVaccinations',
+            'overdueDoseCount', 'vaccineStockAlerts',
             'overdue', 'lowStock', 'expiringSoon', 'labels', 'values',
             'recentTickets', 'smsRecent', 'todaySchedules', 'servedTodayCount'
         ));

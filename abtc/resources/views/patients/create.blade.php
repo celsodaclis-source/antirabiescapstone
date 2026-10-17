@@ -170,6 +170,13 @@
                     </div>
                 </section>
 
+                <section class="rounded-lg border border-amber-200 bg-amber-50 p-5">
+                    <label class="inline-flex items-start gap-3">
+                        <input type="checkbox" name="requires_medical_review" value="1" {{ old('requires_medical_review') ? 'checked' : '' }} class="mt-1 rounded border-amber-400 text-amber-700 focus:ring-amber-600">
+                        <span><span class="block font-semibold text-slate-900">Route for medical review</span><span class="mt-1 block text-sm text-slate-700">Select when the clinical assessment requires review before routine vaccination. Emergency patient type is routed for review automatically.</span></span>
+                    </label>
+                </section>
+
                 {{-- Ticket generation is required before registration can be submitted. --}}
                 <div class="border-t pt-4" data-regular-ticket="{{ $nextRegularTicketNumber }}" data-priority-ticket="{{ $nextPriorityTicketNumber }}">
                     <input type="hidden" id="register_queue" name="register_queue" value="{{ old('register_queue') ? '1' : '' }}">

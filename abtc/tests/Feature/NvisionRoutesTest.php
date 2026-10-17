@@ -3,6 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Patient;
+use App\Models\Ticket;
+use App\Models\VaccinationSchedule;
+use App\Models\VaccineInventory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,12 +14,20 @@ class NvisionRoutesTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Seed the isolated test database with the demo records used below. */
+    private VaccineInventory $batch;
+
+    /** Create isolated staff and inventory fixtures for the feature tests. */
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->seed();
+        User::factory()->create(['name' => 'Test Admin', 'email' => 'admin@abtc.gov.ph', 'role' => 'Admin']);
+        User::factory()->create(['name' => 'Test Nurse', 'email' => 'nurse@abtc.gov.ph', 'role' => 'Nurse']);
+        User::factory()->create(['name' => 'Test Doctor', 'email' => 'doctor@abtc.gov.ph', 'role' => 'Doctor']);
+        $this->batch = VaccineInventory::create([
+            'batch_number' => 'ROUTE-001', 'vaccine_name' => 'PVRV', 'quantity' => 5,
+            'expiration_date' => now()->addYear()->toDateString(), 'low_stock_threshold' => 1,
+        ]);
     }
 
     public function test_all_module_routes_render_for_admin(): void
@@ -66,7 +78,7 @@ class NvisionRoutesTest extends TestCase
             'address' => '123 Test St', 'barangay' => 'Barangka',
             'date_of_bite' => now()->toDateString(), 'animal_type' => 'Dog',
             'exposure_category' => 'III', 'register_queue' => true,
-            'patient_type' => 'regular',
+            'patient_type' => 'regular', 'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
         ]);
 
         $response->assertRedirect();
@@ -87,12 +99,20 @@ class NvisionRoutesTest extends TestCase
 public function test_dose_administer_deducts_inventory_atomically(): void
     {
         $doctor = User::where('role', 'Doctor')->first();
-        $batch = \App\Models\VaccineInventory::where('quantity', '>', 0)->first();
+        $batch = $this->batch;
         $qtyBefore = $batch->quantity;
 
-        $schedule = \App\Models\VaccinationSchedule::where('status', 'scheduled')->first();
+        $patient = Patient::create([
+            'first_name' => 'Dose', 'last_name' => 'Test', 'dob' => '1990-01-01', 'sex' => 'Female',
+            'address' => 'Test address', 'barangay' => 'Barangka', 'patient_type' => 'regular',
+            'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
+        ]);
+        $schedule = VaccinationSchedule::create([
+            'patient_id' => $patient->id, 'dose_number' => 1,
+            'scheduled_date' => now()->toDateString(), 'status' => 'scheduled',
+        ]);
         $response = $this->actingAs($doctor)->post(route('schedules.administer', $schedule), [
-            'inventory_id' => $batch->id,
+            'vaccine_type' => 'PVRV', 'inventory_id' => $batch->id,
         ]);
 
         $response->assertRedirect();

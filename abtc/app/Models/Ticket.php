@@ -14,7 +14,7 @@ class Ticket extends Model
     protected $fillable = [
         'patient_id', 'ticket_number', 'status', 'counter_assigned',
         'assigned_staff_id', 'called_at', 'served_at', 'completed_at',
-        'is_priority',
+        'is_priority', 'visit_type', 'service_stage', 'vaccination_schedule_id',
     ];
 
     protected $casts = [
@@ -40,6 +40,11 @@ class Ticket extends Model
     public function assignedStaff()
     {
         return $this->belongsTo(User::class, 'assigned_staff_id');
+    }
+
+    public function vaccinationSchedule()
+    {
+        return $this->belongsTo(VaccinationSchedule::class);
     }
 
     public function statusColor(): string

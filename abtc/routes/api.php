@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('waiting', [QueueApiController::class, 'waiting']);
         Route::get('serving', [QueueApiController::class, 'serving']);
         Route::post('call-next', [QueueApiController::class, 'callNext']);
+        Route::post('schedules/{schedule}/queue', [QueueApiController::class, 'queueSchedule']);
         Route::post('call/{ticket}', [QueueApiController::class, 'callSpecific']);
         Route::post('serve/{ticket}', [QueueApiController::class, 'serve']);
         Route::post('hold/{ticket}', [QueueApiController::class, 'hold']);

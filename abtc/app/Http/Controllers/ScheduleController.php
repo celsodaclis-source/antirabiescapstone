@@ -20,7 +20,7 @@ class ScheduleController extends Controller
         $filter = $request->input('filter', 'all');
         $search = trim((string) $request->input('search', ''));
 
-        $query = VaccinationSchedule::with(['patient', 'administeredBy', 'inventory'])
+        $query = VaccinationSchedule::with(['patient', 'administeredBy', 'inventory', 'tickets'])
             ->orderBy('scheduled_date');
 
         if ($search !== '') {
@@ -39,7 +39,7 @@ class ScheduleController extends Controller
         if ($filter === 'upcoming') {
             $query->where('status', 'scheduled')->where('scheduled_date', '>=', now()->toDateString());
         } elseif ($filter === 'overdue') {
-            $query->where('status', 'scheduled')->where('scheduled_date', '<', now()->toDateString());
+            $query->whereIn('status', ['scheduled', 'missed'])->where('scheduled_date', '<', now()->toDateString());
         } elseif ($filter === 'administered') {
             $query->where('status', 'administered');
         } elseif ($filter === 'missed') {
@@ -48,7 +48,7 @@ class ScheduleController extends Controller
 
         $schedules = $query->paginate(20)->withQueryString();
 
-        $overdueCount = VaccinationSchedule::where('status', 'scheduled')
+        $overdueCount = VaccinationSchedule::whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<', now()->toDateString())->count();
 
         return view('schedules.index', compact('schedules', 'filter', 'overdueCount', 'search'));
@@ -65,6 +65,7 @@ class ScheduleController extends Controller
         $schedule->load('patient.biteIncidents');
         $batches = VaccineInventory::where('quantity', '>', 0)
             ->where('expiration_date', '>=', now()->toDateString())
+            ->when($schedule->patient?->vaccine_type, fn ($q, $vaccineType) => $q->where('vaccine_name', $vaccineType))
             ->orderBy('expiration_date')
             ->get()
             ->reject(fn (VaccineInventory $batch) => $this->isImmunoglobulin($batch->vaccine_name))
@@ -81,6 +82,10 @@ class ScheduleController extends Controller
             'status' => ['required', Rule::in($schedule->status === 'administered' ? ['administered'] : ['scheduled', 'missed'])],
         ]);
 
+        if ($data['status'] === 'missed' && \Illuminate\Support\Carbon::parse($data['scheduled_date'])->gt(today())) {
+            return back()->withErrors(['status' => 'A dose can only be marked missed after its scheduled date.'])->withInput();
+        }
+
         $schedule->update($data);
         Audit::log('schedule.reschedule', "Rescheduled dose {$schedule->dose_number} for patient #{$schedule->patient_id} to {$schedule->scheduled_date}", $schedule);
 
@@ -94,12 +99,25 @@ class ScheduleController extends Controller
         }
 
         $data = $request->validate([
-            'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes())],
+            'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes($schedule))],
             'inventory_id' => ['required', 'exists:vaccine_inventory,id'],
         ]);
 
         // Atomically deduct inventory and record the dose.
         return DB::transaction(function () use ($schedule, $data) {
+            $lockedSchedule = VaccinationSchedule::lockForUpdate()->findOrFail($schedule->id);
+            if ($lockedSchedule->status === 'administered') {
+                return back()->with('status', 'This dose was already administered.');
+            }
+            if ($lockedSchedule->scheduled_date->gt(today())) {
+                return back()->withErrors(['scheduled_date' => 'This dose is not due yet.'])->withInput();
+            }
+            if (VaccinationSchedule::where('patient_id', $lockedSchedule->patient_id)
+                ->where('dose_number', '<', $lockedSchedule->dose_number)
+                ->where('status', '!=', 'administered')->exists()) {
+                return back()->withErrors(['schedule' => 'Earlier doses must be administered first.'])->withInput();
+            }
+
             $batch = VaccineInventory::lockForUpdate()
                 ->where('vaccine_name', $data['vaccine_type'])
                 ->where('quantity', '>', 0)
@@ -112,14 +130,18 @@ class ScheduleController extends Controller
 
             $batch->decrement('quantity');
 
-            $schedule->update([
+            $lockedSchedule->update([
                 'status' => 'administered',
                 'administered_at' => now(),
                 'administered_by' => auth()->id(),
                 'inventory_id' => $batch->id,
             ]);
 
-            Audit::log('schedule.administer', "Administered dose {$schedule->dose_number} to patient #{$schedule->patient_id} from batch {$batch->batch_number}", $schedule);
+            Ticket::where('vaccination_schedule_id', $lockedSchedule->id)
+                ->whereIn('status', ['waiting', 'called', 'in_progress', 'held'])
+                ->update(['status' => 'completed', 'completed_at' => now()]);
+
+            Audit::log('schedule.administer', "Administered dose {$lockedSchedule->dose_number} to patient #{$lockedSchedule->patient_id} from batch {$batch->batch_number}", $lockedSchedule);
 
             return redirect()->route('schedules.index')
                 ->with('status', "Dose {$schedule->dose_number} administered. Batch {$batch->batch_number} stock: {$batch->quantity} remaining.");
@@ -129,7 +151,7 @@ class ScheduleController extends Controller
     public function overdue(): View
     {
         $overdue = VaccinationSchedule::with('patient')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<', now()->toDateString())
             ->orderBy('scheduled_date')
             ->paginate(20);
@@ -137,11 +159,13 @@ class ScheduleController extends Controller
         return view('schedules.overdue', compact('overdue'));
     }
 
-    protected function availableVaccineTypes(): array
+    protected function availableVaccineTypes(?VaccinationSchedule $schedule = null): array
     {
-        return VaccineInventory::where('quantity', '>', 0)
+        $query = VaccineInventory::where('quantity', '>', 0)
             ->where('expiration_date', '>=', now()->toDateString())
-            ->pluck('vaccine_name')
+            ->when($schedule?->patient?->vaccine_type, fn ($q, $vaccineType) => $q->where('vaccine_name', $vaccineType));
+
+        return $query->pluck('vaccine_name')
             ->unique()
             ->reject(fn (string $name) => $this->isImmunoglobulin($name))
             ->values()

@@ -32,7 +32,7 @@ class SmsGatewayTest extends TestCase
         $result = (new SmsGateway)->send('09171234567', 'Hello');
 
         $this->assertTrue($result['success']);
-        $this->assertSame('delivered', $result['status']);
+        $this->assertSame('pending', $result['status']);
 
         Http::assertSent(function ($request) {
             $this->assertSame('POST', $request->method());

@@ -56,7 +56,7 @@ class ReportController extends Controller
                 ->whereBetween('administered_at', [$fromDt, $toDt])->count(),
             'missed_appointments' => VaccinationSchedule::where('status', 'missed')
                 ->whereBetween('scheduled_date', [$fromDt, $toDt])->count(),
-            'overdue_followups' => VaccinationSchedule::where('status', 'scheduled')
+            'overdue_followups' => VaccinationSchedule::whereIn('status', ['scheduled', 'missed'])
                 ->where('scheduled_date', '<', now()->toDateString())->count(),
             'inventory_used' => VaccineInventory::whereBetween('created_at', [$fromDt, $toDt])->sum('quantity'),
             'new_inventory_received' => VaccineInventory::whereNotNull('received_date')

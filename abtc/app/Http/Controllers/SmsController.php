@@ -83,7 +83,7 @@ class SmsController extends Controller
         }
 
         $next = $patient->vaccinationSchedules()
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'missed'])
             ->orderBy('scheduled_date')
             ->first();
 
@@ -101,7 +101,7 @@ class SmsController extends Controller
     public function sendOverdue(): RedirectResponse
     {
         $overdue = VaccinationSchedule::with('patient')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<', now()->toDateString())
             ->get();
 

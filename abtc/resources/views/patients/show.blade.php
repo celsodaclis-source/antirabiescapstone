@@ -152,7 +152,7 @@
                         <tbody class="divide-y">
                             @forelse ($patient->tickets as $t)
                                 <tr class="hover:bg-sky-50/50">
-                                    <td class="px-3 py-2 text-black font-medium">{{ $t->ticket_number }}</td>
+                                    <td class="px-3 py-2 text-black font-medium">{{ $t->ticket_number }}<span class="block text-xs font-normal text-slate-600">{{ ucfirst($t->visit_type) }} · {{ str_replace('_', ' ', ucfirst($t->service_stage)) }}@if($t->vaccinationSchedule) · Dose {{ $t->vaccinationSchedule->dose_number }}@endif</span></td>
                                     <td class="px-3 py-2"><x-status-badge :status="$t->status" /></td>
                                     <td class="px-3 py-2 text-black">{{ $t->counter_assigned ?? '—' }}</td>
                                     <td class="px-3 py-2 text-black">{{ $t->called_at?->format('h:i A') ?? '—' }}</td>

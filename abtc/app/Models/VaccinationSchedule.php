@@ -36,8 +36,14 @@ class VaccinationSchedule extends Model
         return $this->belongsTo(VaccineInventory::class);
     }
 
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function isOverdue(): bool
     {
-        return $this->status === 'scheduled' && $this->scheduled_date->lt(now()->startOfDay());
+        return in_array($this->status, ['scheduled', 'missed'], true)
+            && $this->scheduled_date->lt(now()->startOfDay());
     }
 }

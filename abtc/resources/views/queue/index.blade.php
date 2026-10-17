@@ -31,6 +31,7 @@
                                     <div class="text-black">
                                         <div class="text-lg font-bold text-black">{{ $t->ticket_number }}</div>
                                         <div class="text-sm">{{ $t->patient->fullName() }}</div>
+                                        <div class="text-xs font-medium text-violet-800">{{ ucfirst($t->visit_type) }} · {{ str_replace('_', ' ', ucfirst($t->service_stage)) }}@if($t->vaccinationSchedule) · Dose {{ $t->vaccinationSchedule->dose_number }}@endif</div>
                                         <div class="text-xs text-black">Counter {{ $t->counter_assigned }} &middot; {{ $t->assignedStaff?->name }}</div>
                                     </div>
                                     <div class="text-right">
@@ -41,6 +42,9 @@
                                             </form>
                                             <form method="POST" action="{{ route('queue.complete', $t) }}">@csrf
                                                 <button class="text-xs bg-green-600 text-white px-2 py-1 rounded">Done</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('queue.hold', $t) }}">@csrf
+                                                <button class="text-xs bg-amber-600 text-white px-2 py-1 rounded">Hold / Skip</button>
                                             </form>
                                         </div>
                                     </div>
@@ -62,17 +66,12 @@
                                     <div class="text-black">
                                         <span class="font-semibold text-black">{{ $t->ticket_number }}</span>
                                         <span class="text-sm text-black ml-2">{{ $t->patient->fullName() }}</span>
+                                        <span class="block text-xs text-violet-800">{{ ucfirst($t->visit_type) }} · {{ str_replace('_', ' ', ucfirst($t->service_stage)) }}@if($t->vaccinationSchedule) · Dose {{ $t->vaccinationSchedule->dose_number }}@endif</span>
                                         @if ($t->is_priority)
                                             <span class="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full ml-1">{{ $t->patient->patientTypeLabel() }}</span>
                                         @endif
                                     </div>
-                                    <form method="POST" action="{{ route('queue.call', $t) }}" class="flex gap-1 items-center">
-                                        @csrf
-                                        <select name="counter" class="text-xs border-gray-300 rounded">
-                                            @foreach ([1,2,3,4] as $c) <option value="{{ $c }}">C{{ $c }}</option> @endforeach
-                                        </select>
-                                        <button class="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Call</button>
-                                    </form>
+                                    <span class="text-xs text-slate-500">Next in queue</span>
                                 </li>
                             @endforeach
                         </ol>
@@ -98,7 +97,10 @@
                                 @foreach ($held as $t)
                                     <li class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-2 text-black">
                                         <span class="text-sm text-black"><span class="font-semibold text-black">{{ $t->ticket_number }}</span> &mdash; {{ $t->patient->fullName() }}</span>
-                                        <form method="POST" action="{{ route('queue.call', $t) }}">@csrf
+                                        <form method="POST" action="{{ route('queue.call', $t) }}" class="flex items-center gap-1">@csrf
+                                            <select name="counter" class="text-xs border-gray-300 rounded" aria-label="Recall to counter">
+                                                @foreach ([1,2,3,4] as $c) <option value="{{ $c }}">C{{ $c }}</option> @endforeach
+                                            </select>
                                             <button class="text-xs bg-indigo-600 text-white px-2 py-1 rounded">Recall</button>
                                         </form>
                                     </li>

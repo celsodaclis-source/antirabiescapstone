@@ -12,30 +12,34 @@
                 </div>
             </div>
 
-            @if ($role === 'Admin')
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm border-l-4 border-[#176b9c]">
-                    <div class="text-sm text-black font-medium">Patients Today</div>
-                    <div class="text-3xl font-bold text-black">{{ $patientsToday }}</div>
-                    <a href="{{ route('patients.index') }}" class="text-xs text-[#176b9c] hover:underline mt-2 inline-block font-semibold">View patients &rarr;</a>
+            <section aria-label="Daily operations overview">
+                <h2 class="text-lg font-bold text-slate-800 mb-3">Daily Operations Overview</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <a href="{{ route('patients.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-[#176b9c] p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Total Patients Today</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $patientsToday }}</div><div class="text-xs text-[#176b9c] mt-2">Registered today →</div>
+                    </a>
+                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-amber-400 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Waiting Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $waitingPatients }}</div><div class="text-xs text-[#176b9c] mt-2">Open queue →</div>
+                    </a>
+                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-sky-500 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Currently Serving</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $currentlyServing }}</div><div class="text-xs text-[#176b9c] mt-2">View live queue →</div>
+                    </a>
+                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-emerald-500 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Completed Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $completedPatients }}</div><div class="text-xs text-slate-500 mt-2">Completed today</div>
+                    </a>
+                    <a href="{{ route('schedules.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-violet-500 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Upcoming Vaccinations</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $upcomingVaccinations }}</div><div class="text-xs text-slate-500 mt-2">Next 7 days</div>
+                    </a>
+                    <a href="{{ route('schedules.overdue') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-rose-500 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Overdue Doses</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $overdueDoseCount }}</div><div class="text-xs text-[#176b9c] mt-2">Review overdue doses →</div>
+                    </a>
+                    <a href="{{ route('inventory.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-orange-500 p-5 shadow-sm hover:shadow-md transition">
+                        <div class="text-sm font-medium text-slate-600">Vaccine Stock Alerts</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $vaccineStockAlerts }}</div><div class="text-xs text-[#176b9c] mt-2">Low stock batches →</div>
+                    </a>
                 </div>
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm border-l-4 border-[#e5af22]">
-                    <div class="text-sm text-black font-medium">Current Queue</div>
-                    <div class="text-3xl font-bold text-black">{{ $queueCount }}</div>
-                    <a href="{{ route('queue.index') }}" class="text-xs text-[#176b9c] hover:underline mt-2 inline-block font-semibold">Manage queue &rarr;</a>
-                </div>
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm border-l-4 border-emerald-500">
-                    <div class="text-sm text-black font-medium">Vaccines in Stock</div>
-                    <div class="text-3xl font-bold text-black">{{ $totalStock }}</div>
-                    <a href="{{ route('inventory.index') }}" class="text-xs text-[#176b9c] hover:underline mt-2 inline-block font-semibold">Manage inventory &rarr;</a>
-                </div>
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm border-l-4 border-rose-500">
-                    <div class="text-sm text-black font-medium">Overdue Follow-ups</div>
-                    <div class="text-3xl font-bold text-black">{{ $pendingFollowups }}</div>
-                    <a href="{{ route('schedules.overdue') }}" class="text-xs text-[#176b9c] hover:underline mt-2 inline-block font-semibold">View follow-ups &rarr;</a>
-                </div>
-            </div>
+            </section>
 
+            @if ($role === 'Admin')
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h3 class="font-semibold text-black mb-3">Patient Volume &mdash; {{ now()->format('F Y') }}</h3>
@@ -79,7 +83,7 @@
                 <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h3 class="font-semibold text-black mb-3">Active Queue</h3>
                     @forelse ($recentTickets as $t)
-                    <div class="flex justify-between py-2 border-b border-slate-100 text-sm text-black"><span class="font-medium">{{ $t->ticket_number }}</span><span>{{ $t->patient->fullName() }}</span><span>{{ $t->counter_assigned ?? '&mdash;' }}</span><span><x-status-badge :status="$t->status" /></span></div>
+                    <div class="flex justify-between py-2 border-b border-slate-100 text-sm text-black"><span class="font-medium">{{ $t->ticket_number }}</span><span>{{ $t->patient->fullName() }}</span><span>{{ ucfirst($t->visit_type) }} · {{ str_replace('_', ' ', ucfirst($t->service_stage)) }}@if($t->vaccinationSchedule) · Dose {{ $t->vaccinationSchedule->dose_number }}@endif</span><span>{{ $t->counter_assigned ?? '&mdash;' }}</span><span><x-status-badge :status="$t->status" /></span></div>
                     @empty
                     <p class="text-sm text-black">Queue is empty.</p>
                     @endforelse

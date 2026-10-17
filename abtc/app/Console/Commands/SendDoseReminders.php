@@ -27,8 +27,8 @@ class SendDoseReminders extends Command
         $to = now()->addHours($leadHours + 1);
 
         $due = VaccinationSchedule::with('patient')
-            ->where('status', 'scheduled')
-            ->whereBetween('scheduled_date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('status', ['scheduled', 'missed'])
+            ->where('scheduled_date', '<=', $to->toDateString())
             ->get();
 
         $template = SystemSetting::get('sms_template',

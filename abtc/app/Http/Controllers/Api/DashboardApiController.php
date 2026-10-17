@@ -20,11 +20,11 @@ class DashboardApiController extends Controller
         $patientsToday = Patient::whereDate('created_at', $today)->count();
         $queueCount = Ticket::whereIn('status', ['waiting', 'called', 'in_progress', 'held'])->count();
         $totalStock = VaccineInventory::sum('quantity');
-        $pendingFollowups = VaccinationSchedule::where('status', 'scheduled')
+        $pendingFollowups = VaccinationSchedule::whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<=', $today)->count();
 
         $overdue = VaccinationSchedule::with('patient')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'missed'])
             ->where('scheduled_date', '<', $today)
             ->orderBy('scheduled_date')
             ->get();

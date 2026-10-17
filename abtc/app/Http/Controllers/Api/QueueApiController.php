@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\VaccinationSchedule;
 use App\Services\Audit;
+use App\Services\QueueTicketNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class QueueApiController extends Controller
 {
@@ -15,7 +18,7 @@ class QueueApiController extends Controller
      */
     public function display(): JsonResponse
     {
-        $nowServing = Ticket::with(['patient', 'assignedStaff'])
+        $nowServing = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->whereIn('status', ['called', 'in_progress'])
             ->orderBy('called_at')
             ->get()
@@ -27,7 +30,7 @@ class QueueApiController extends Controller
                 'is_priority' => $t->is_priority,
             ]);
 
-        $waiting = Ticket::with('patient')
+        $waiting = Ticket::with(['patient', 'vaccinationSchedule'])
             ->where('status', 'waiting')
             ->priorityFirst()
             ->get()
@@ -105,26 +108,18 @@ class QueueApiController extends Controller
 
     public function callNext(Request $request): JsonResponse
     {
-        $counter = (int) $request->input('counter', 1);
-
-        $already = Ticket::where('counter_assigned', $counter)
-            ->whereIn('status', ['called', 'in_progress'])
-            ->first();
-        if ($already) {
-            return response()->json(['message' => "Counter {$counter} is already serving {$already->ticket_number}."], 409);
-        }
-
-        $next = Ticket::where('status', 'waiting')->priorityFirst()->first();
-        if (!$next) {
-            return response()->json(['message' => 'No waiting tickets.'], 404);
-        }
-
-        $next->update([
-            'status' => 'called',
-            'counter_assigned' => $counter,
-            'assigned_staff_id' => auth()->id(),
-            'called_at' => now(),
-        ]);
+        $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
+        $counter = (int) ($data['counter'] ?? 1);
+        [$next, $message] = DB::transaction(function () use ($counter) {
+            $already = Ticket::where('counter_assigned', $counter)
+                ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($already) return [null, ["Counter {$counter} is already serving {$already->ticket_number}.", 409]];
+            $next = Ticket::where('status', 'waiting')->priorityFirst()->lockForUpdate()->first();
+            if (!$next) return [null, ['No waiting tickets.', 404]];
+            $next->update(['status' => 'called', 'counter_assigned' => $counter, 'assigned_staff_id' => auth()->id(), 'called_at' => now()]);
+            return [$next, null];
+        });
+        if (!$next) return response()->json(['message' => $message[0]], $message[1]);
 
         Audit::log('queue.call_next', "API: Called next ticket {$next->ticket_number} to counter {$counter}", $next);
 
@@ -134,20 +129,47 @@ class QueueApiController extends Controller
         ]);
     }
 
+    public function queueSchedule(VaccinationSchedule $schedule): JsonResponse
+    {
+        [$ticket, $message, $status] = DB::transaction(function () use ($schedule) {
+            $lockedSchedule = VaccinationSchedule::lockForUpdate()->findOrFail($schedule->id);
+            if (!in_array($lockedSchedule->status, ['scheduled', 'missed'], true)) {
+                return [null, 'Only a scheduled or missed dose can be added to the queue.', 422];
+            }
+            if ($lockedSchedule->scheduled_date->gt(today())) {
+                return [null, 'This dose is not due yet and cannot be queued.', 422];
+            }
+            if (VaccinationSchedule::where('patient_id', $lockedSchedule->patient_id)
+                ->where('dose_number', '<', $lockedSchedule->dose_number)
+                ->where('status', '!=', 'administered')->exists()) {
+                return [null, 'Complete earlier doses before queueing this scheduled dose.', 422];
+            }
+            if (Ticket::where('vaccination_schedule_id', $lockedSchedule->id)
+                ->whereIn('status', ['waiting', 'called', 'in_progress', 'held'])->exists()) {
+                return [null, 'This dose already has an active queue ticket.', 409];
+            }
+            return [QueueTicketNumber::forReturningPatient($lockedSchedule->patient, $lockedSchedule), null, null];
+        });
+        if (!$ticket) return response()->json(['message' => $message], $status);
+        Audit::log('queue.returning_patient', "API: Queued returning patient for dose {$schedule->dose_number} ({$ticket->ticket_number})", $ticket);
+
+        return response()->json(['data' => $ticket->load(['patient', 'vaccinationSchedule']), 'message' => "Queued for dose {$schedule->dose_number}."], 201);
+    }
+
     public function callSpecific(Ticket $ticket, Request $request): JsonResponse
     {
-        $counter = (int) $request->input('counter', $ticket->counter_assigned ?? 1);
+        $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
+        $counter = (int) ($data['counter'] ?? $ticket->counter_assigned ?? 1);
 
-        if (!in_array($ticket->status, ['waiting', 'held'])) {
-            return response()->json(['message' => "Ticket {$ticket->ticket_number} cannot be called."], 422);
-        }
-
-        $ticket->update([
-            'status' => 'called',
-            'counter_assigned' => $counter,
-            'assigned_staff_id' => auth()->id(),
-            'called_at' => now(),
-        ]);
+        $message = DB::transaction(function () use ($ticket, $counter) {
+            $locked = Ticket::lockForUpdate()->findOrFail($ticket->id);
+            if ($locked->status !== 'held') return "Only a held ticket can be recalled.";
+            $active = Ticket::where('counter_assigned', $counter)->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($active) return "Counter {$counter} is already serving {$active->ticket_number}.";
+            $locked->update(['status' => 'called', 'counter_assigned' => $counter, 'assigned_staff_id' => auth()->id(), 'called_at' => now()]);
+            return null;
+        });
+        if ($message) return response()->json(['message' => $message], 409);
 
         Audit::log('queue.call_specific', "API: Called ticket {$ticket->ticket_number} to counter {$counter}", $ticket);
 
@@ -159,7 +181,7 @@ class QueueApiController extends Controller
 
     public function serve(Ticket $ticket): JsonResponse
     {
-        if (!in_array($ticket->status, ['called', 'in_progress', 'held'])) {
+        if (!in_array($ticket->status, ['called', 'in_progress'], true)) {
             return response()->json(['message' => 'Ticket must be called first.'], 422);
         }
 
@@ -192,6 +214,12 @@ class QueueApiController extends Controller
 
     public function complete(Ticket $ticket): JsonResponse
     {
+        if (!in_array($ticket->status, ['called', 'in_progress'], true)) {
+            return response()->json(['message' => 'Only a called or currently serving ticket can be completed.'], 422);
+        }
+        if ($ticket->vaccination_schedule_id && $ticket->vaccinationSchedule?->status !== 'administered') {
+            return response()->json(['message' => 'Administer the linked dose before completing this follow-up ticket.'], 422);
+        }
         $ticket->update(['status' => 'completed', 'completed_at' => now()]);
         Audit::log('queue.complete', "API: Completed ticket {$ticket->ticket_number}", $ticket);
 

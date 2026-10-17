@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
         Route::get('/patient/{patient}', [ScheduleController::class, 'show'])->name('show');
+        Route::post('/{schedule}/queue', [QueueController::class, 'queueSchedule'])->name('queue');
         Route::get('/{schedule}/edit', [ScheduleController::class, 'edit'])->name('edit');
         Route::put('/{schedule}', [ScheduleController::class, 'update'])->name('update');
         Route::post('/{schedule}/administer', [ScheduleController::class, 'administer'])->name('administer');

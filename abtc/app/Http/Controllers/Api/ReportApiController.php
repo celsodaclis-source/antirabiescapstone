@@ -32,7 +32,7 @@ class ReportApiController extends Controller
                     ->whereBetween('administered_at', [$fromDt, $toDt])->count(),
                 'missed_appointments' => VaccinationSchedule::where('status', 'missed')
                     ->whereBetween('scheduled_date', [$fromDt, $toDt])->count(),
-                'overdue_followups' => VaccinationSchedule::where('status', 'scheduled')
+                'overdue_followups' => VaccinationSchedule::whereIn('status', ['scheduled', 'missed'])
                     ->where('scheduled_date', '<', now()->toDateString())->count(),
                 'total_inventory_stock' => VaccineInventory::sum('quantity'),
                 'sms_delivered' => SmsLog::where('status', 'delivered')
