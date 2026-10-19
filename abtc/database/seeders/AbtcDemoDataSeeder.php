@@ -9,14 +9,12 @@ use App\Models\VaccinationSchedule;
 use App\Models\VaccineInventory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Faker\Factory as FakerFactory;
 
 class AbtcDemoDataSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = FakerFactory::create();
-        $faker->seed(20261019);
+        mt_srand(20261019);
 
         $stock = collect(['PVRV', 'PCECV'])->mapWithKeys(function (string $vaccine) {
             $batchNumber = 'DEMO-'.$vaccine.'-2026';
@@ -35,7 +33,7 @@ class AbtcDemoDataSeeder extends Seeder
         });
 
         $created = 0;
-        DB::transaction(function () use ($faker, $stock, &$created) {
+        DB::transaction(function () use ($stock, &$created) {
             for ($number = 1; $number <= 100; $number++) {
                 $marker = sprintf('DEMO SEED ONLY #%03d - ', $number);
                 if (Patient::where('address', 'like', $marker.'%')->exists()) {
@@ -45,18 +43,18 @@ class AbtcDemoDataSeeder extends Seeder
                 $type = $number % 17 === 0 ? 'emergency' : Patient::patientTypes()[($number - 1) % 4];
                 $vaccine = $number % 2 === 0 ? 'PVRV' : 'PCECV';
                 $plannedDoses = 4;
-                $biteDate = today()->subDays($faker->numberBetween(0, 45));
-                $createdAt = now()->subDays($faker->numberBetween(0, 29));
+                $biteDate = today()->subDays(mt_rand(0, 45));
+                $createdAt = now()->subDays(mt_rand(0, 29));
 
                 $patient = Patient::create([
-                    'first_name' => $faker->firstName(),
-                    'middle_name' => $faker->optional(0.7)->lastName(),
-                    'last_name' => $faker->lastName(),
-                    'dob' => $faker->dateTimeBetween('-85 years', '-1 year')->format('Y-m-d'),
-                    'sex' => $faker->randomElement(['Male', 'Female', 'Other']),
+                    'first_name' => $this->randomItem(['Alex', 'Angela', 'Bea', 'Carlo', 'Daniel', 'Ella', 'Francis', 'Grace', 'Jamie', 'Jordan', 'Kai', 'Leah', 'Miguel', 'Nina', 'Paolo', 'Rosa', 'Sam', 'Tina', 'Victor', 'Zoe']),
+                    'middle_name' => $number % 4 === 0 ? null : $this->randomItem(['Santos', 'Reyes', 'Cruz', 'Garcia', 'Ramos', 'Flores', 'Mendoza', 'Bautista']),
+                    'last_name' => $this->randomItem(['Santos', 'Reyes', 'Cruz', 'Garcia', 'Ramos', 'Flores', 'Mendoza', 'Bautista', 'Rivera', 'Castillo', 'Torres', 'Aquino']),
+                    'dob' => today()->subYears(mt_rand(1, 85))->subDays(mt_rand(0, 364))->toDateString(),
+                    'sex' => $this->randomItem(['Male', 'Female', 'Other']),
                     'contact_number' => '0997'.str_pad((string) (1000000 + $number), 7, '0', STR_PAD_LEFT),
-                    'address' => $marker.$faker->streetAddress(),
-                    'barangay' => $faker->randomElement(Patient::barangays()),
+                    'address' => $marker.mt_rand(1, 250).' '.$this->randomItem(['Sample Street', 'Demo Avenue', 'Test Road', 'Example Lane']),
+                    'barangay' => $this->randomItem(Patient::barangays()),
                     'patient_type' => $type,
                     'vaccine_type' => $vaccine,
                     'planned_dose_count' => $plannedDoses,
@@ -66,11 +64,11 @@ class AbtcDemoDataSeeder extends Seeder
                 BiteIncident::create([
                     'patient_id' => $patient->id,
                     'date_of_bite' => $biteDate,
-                    'animal_type' => $faker->randomElement(['Dog', 'Cat', 'Monkey']),
-                    'exposure_category' => $faker->randomElement(['II', 'II', 'III']),
-                    'bite_site' => $faker->randomElement(['Hand', 'Arm', 'Leg', 'Face']),
-                    'animal_status' => $faker->randomElement(['Healthy', 'Sick', 'Dead', 'Unknown']),
-                    'animal_vaccinated' => $faker->boolean(35),
+                    'animal_type' => $this->randomItem(['Dog', 'Cat', 'Monkey']),
+                    'exposure_category' => $this->randomItem(['II', 'II', 'III']),
+                    'bite_site' => $this->randomItem(['Hand', 'Arm', 'Leg', 'Face']),
+                    'animal_status' => $this->randomItem(['Healthy', 'Sick', 'Dead', 'Unknown']),
+                    'animal_vaccinated' => mt_rand(1, 100) <= 35,
                 ]);
 
                 $progress = $number % 5;
@@ -120,7 +118,7 @@ class AbtcDemoDataSeeder extends Seeder
                     81 => 3,
                     default => null,
                 };
-                $ticketCreatedAt = $createdAt->copy()->addMinutes($faker->numberBetween(1, 180));
+                $ticketCreatedAt = $createdAt->copy()->addMinutes(mt_rand(1, 180));
 
                 Ticket::create([
                     'patient_id' => $patient->id,
@@ -147,6 +145,11 @@ class AbtcDemoDataSeeder extends Seeder
 
         $this->command?->info("Added {$created} demo patients (100 maximum). Existing records were preserved.");
         $this->command?->line('Demo-only records are marked in the patient address; no existing records were deleted or reset.');
+    }
+
+    private function randomItem(array $items): mixed
+    {
+        return $items[array_rand($items)];
     }
 
     private function nextTicketNumber(bool $priority): string
