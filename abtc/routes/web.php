@@ -102,6 +102,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     });
 
+    // Clinical assessment: vaccination plan (Doctors and Nurses only)
+    Route::middleware('role:Doctor,Nurse')->group(function () {
+        Route::get('/patients/{patient}/plan', [PatientController::class, 'plan'])->name('patients.plan');
+        Route::put('/patients/{patient}/plan', [PatientController::class, 'storePlan'])->name('patients.plan.store');
+    });
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

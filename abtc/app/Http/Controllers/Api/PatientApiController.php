@@ -41,6 +41,8 @@ class PatientApiController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $isClinical = in_array($request->user()?->role, ['Doctor', 'Nurse'], true);
+
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -60,12 +62,23 @@ class PatientApiController extends Controller
             'requires_medical_review' => ['nullable', 'boolean'],
             'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:' . implode(',', Patient::patientTypes())],
-            'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
-            'planned_dose_count' => ['required', 'integer', 'in:3,4'],
+            'vaccine_type' => $isClinical
+                ? ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())]
+                : ['sometimes', 'nullable', 'string'],
+            'planned_dose_count' => $isClinical
+                ? ['required', 'integer', 'in:3,4']
+                : ['sometimes', 'nullable', 'integer', 'in:3,4'],
         ]);
 
-        return DB::transaction(function () use ($data, $request) {
-            $patient = Patient::create([...$data, 'patient_type' => $data['patient_type'] ?? 'regular']);
+        $requiresMedicalReview = $isClinical && $request->boolean('requires_medical_review');
+
+        return DB::transaction(function () use ($data, $request, $isClinical, $requiresMedicalReview) {
+            $patient = Patient::create([
+                ...$data,
+                'patient_type' => $data['patient_type'] ?? 'regular',
+                'vaccine_type' => $isClinical ? $data['vaccine_type'] : null,
+                'planned_dose_count' => $isClinical ? (int) $data['planned_dose_count'] : null,
+            ]);
 
             BiteIncident::create([
                 'patient_id' => $patient->id,
@@ -77,9 +90,11 @@ class PatientApiController extends Controller
                 'animal_vaccinated' => $request->boolean('animal_vaccinated'),
             ]);
 
-            $ticket = QueueTicketNumber::forNewPatient($patient, $request->boolean('requires_medical_review'));
+            $ticket = QueueTicketNumber::forNewPatient($patient, $requiresMedicalReview);
 
-            $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
+            if ($isClinical) {
+                $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
+            }
 
             Audit::log('patient.register', "API: Registered patient {$patient->fullName()} (Ticket: " . ($ticket ? $ticket->ticket_number : 'none') . ")", $patient);
 

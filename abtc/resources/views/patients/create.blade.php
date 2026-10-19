@@ -3,6 +3,7 @@
 
     @php
         $isStaffUser = Auth::user()->role === 'Staff';
+        $isClinicalUser = in_array(Auth::user()->role, ['Doctor', 'Nurse'], true);
         $registrationAction = $isStaffUser ? route('staff.patients.store') : route('patients.store');
         $cancelRoute = $isStaffUser ? route('staff.patients.search') : route('patients.index');
     @endphp
@@ -144,7 +145,8 @@
                 </div>
                 </section>
 
-                {{-- Clinical vaccination plan is selected by staff at registration. --}}
+                {{-- Clinical assessment sections are recorded by Doctors and Nurses only. --}}
+                @if ($isClinicalUser)
                 <section class="rounded-lg border border-sky-200 bg-sky-50 p-5">
                     <div class="mb-2">
                         <h3 class="font-semibold text-slate-900">Vaccination Plan</h3>
@@ -182,6 +184,7 @@
                         <span><span class="block font-semibold text-slate-900">Route for medical review</span><span class="mt-1 block text-sm text-slate-700">Select when the clinical assessment requires review before routine vaccination. Emergency patient type is routed for review automatically.</span></span>
                     </label>
                 </section>
+                @endif
 
                 {{-- Ticket generation is required before registration can be submitted. --}}
                 <div class="border-t pt-4" data-regular-ticket="{{ $nextRegularTicketNumber }}" data-priority-ticket="{{ $nextPriorityTicketNumber }}">

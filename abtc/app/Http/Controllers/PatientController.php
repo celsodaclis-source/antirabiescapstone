@@ -90,6 +90,8 @@ class PatientController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $isClinical = $this->isClinicalUser($request);
+
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -109,11 +111,16 @@ class PatientController extends Controller
             'requires_medical_review' => ['nullable', 'boolean'],
             'register_queue' => ['accepted'],
             'patient_type' => ['required', 'string', 'in:'.implode(',', Patient::patientTypes())],
-            'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
-            'planned_dose_count' => ['required', 'integer', 'in:3,4'],
+            'vaccine_type' => $isClinical
+                ? ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())]
+                : ['sometimes', 'nullable', 'string'],
+            'planned_dose_count' => $isClinical
+                ? ['required', 'integer', 'in:3,4']
+                : ['sometimes', 'nullable', 'integer', 'in:3,4'],
         ]);
 
         $animalVaccinated = $request->boolean('animal_vaccinated');
+        $requiresMedicalReview = $isClinical && $request->boolean('requires_medical_review');
 
         if ($this->findDuplicatePatient($data)) {
             return back()->withInput()->withErrors([
@@ -121,7 +128,7 @@ class PatientController extends Controller
             ]);
         }
 
-        return DB::transaction(function () use ($data, $animalVaccinated, $request) {
+        return DB::transaction(function () use ($data, $animalVaccinated, $request, $isClinical, $requiresMedicalReview) {
             if ($this->findDuplicatePatient($data)) {
                 throw ValidationException::withMessages([
                     'first_name' => 'A patient with this name and date of birth already exists. Search for the existing patient and create a returning-patient ticket instead.',
@@ -139,8 +146,8 @@ class PatientController extends Controller
                 'address' => $data['address'],
                 'barangay' => $data['barangay'],
                 'patient_type' => $data['patient_type'] ?? 'regular',
-                'vaccine_type' => $data['vaccine_type'],
-                'planned_dose_count' => (int) $data['planned_dose_count'],
+                'vaccine_type' => $isClinical ? $data['vaccine_type'] : null,
+                'planned_dose_count' => $isClinical ? (int) $data['planned_dose_count'] : null,
             ]);
 
             BiteIncident::create([
@@ -153,9 +160,11 @@ class PatientController extends Controller
                 'animal_vaccinated' => $animalVaccinated,
             ]);
 
-            $ticket = QueueTicketNumber::forNewPatient($patient, $request->boolean('requires_medical_review'));
+            $ticket = QueueTicketNumber::forNewPatient($patient, $requiresMedicalReview);
 
-            $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
+            if ($isClinical) {
+                $this->generateSchedules($patient, $data['date_of_bite'], (int) $data['planned_dose_count']);
+            }
 
             Audit::log('patient.register', "Registered patient {$patient->fullName()} (Ticket: ".($ticket ? $ticket->ticket_number : 'none').")", $patient);
 
@@ -167,6 +176,59 @@ class PatientController extends Controller
             return redirect()->route('patients.show', $patient)
                 ->with('status', "Patient registered successfully. Ticket {$ticket->ticket_number} generated.");
         });
+    }
+
+    public function plan(Patient $patient): View|RedirectResponse
+    {
+        if ($patient->vaccine_type !== null || $patient->vaccinationSchedules()->exists()) {
+            return redirect()->route('patients.show', $patient)
+                ->with('status', 'A vaccination plan has already been recorded for this patient.');
+        }
+
+        $patient->load('biteIncidents');
+        $vaccineTypes = $this->availableVaccineTypes();
+
+        return view('patients.plan', compact('patient', 'vaccineTypes'));
+    }
+
+    public function storePlan(Request $request, Patient $patient): RedirectResponse
+    {
+        if ($patient->vaccine_type !== null || $patient->vaccinationSchedules()->exists()) {
+            return redirect()->route('patients.show', $patient)
+                ->with('status', 'A vaccination plan has already been recorded for this patient.');
+        }
+
+        $biteIncident = $patient->biteIncidents()->orderBy('date_of_bite')->first();
+        if (! $biteIncident) {
+            return redirect()->route('patients.show', $patient)
+                ->withErrors(['schedules' => 'No bite incident is recorded for this patient, so the dose schedule cannot be computed.']);
+        }
+
+        $data = $request->validate([
+            'vaccine_type' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableVaccineTypes())],
+            'planned_dose_count' => ['required', 'integer', 'in:3,4'],
+            'requires_medical_review' => ['nullable', 'boolean'],
+        ]);
+
+        DB::transaction(function () use ($patient, $data, $request, $biteIncident) {
+            $patient->update([
+                'vaccine_type' => $data['vaccine_type'],
+                'planned_dose_count' => (int) $data['planned_dose_count'],
+            ]);
+
+            $this->generateSchedules($patient, $biteIncident->date_of_bite->toDateString(), (int) $data['planned_dose_count']);
+
+            if ($request->boolean('requires_medical_review')) {
+                Ticket::where('patient_id', $patient->id)
+                    ->whereIn('status', ['waiting', 'called', 'in_progress', 'held'])
+                    ->update(['service_stage' => 'medical_review']);
+            }
+
+            Audit::log('patient.plan', "Recorded vaccination plan for {$patient->fullName()} ({$data['vaccine_type']}, {$data['planned_dose_count']} doses)", $patient);
+        });
+
+        return redirect()->route('patients.show', $patient)
+            ->with('status', 'Vaccination plan recorded. The dose schedule has been generated.');
     }
 
     public function show(Patient $patient): View
@@ -312,6 +374,11 @@ class PatientController extends Controller
     protected function nextTicketNumber(bool $isPriority = false): string
     {
         return QueueTicketNumber::next($isPriority);
+    }
+
+    protected function isClinicalUser(Request $request): bool
+    {
+        return in_array($request->user()?->role, ['Doctor', 'Nurse'], true);
     }
 
     private function findDuplicatePatient(array $data): ?Patient
