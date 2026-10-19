@@ -72,17 +72,7 @@
             <x-input-error :messages="$errors->get('contact_number')" class="mt-2"></x-input-error>
         </div>
 
-        <!-- Role -->
-        @php($roles = \App\Models\User::roles())
-        <div class="mt-4">
-            <x-input-label for="role" :value="__('Role')"></x-input-label>
-            <select id="role" name="role" required class="block w-full rounded-lg border-slate-300 bg-white/80 px-4 py-2.5 text-sm text-slate-800 shadow-sm transition duration-150 ease-in-out hover:border-slate-400 focus:border-[#1976ba] focus:ring-2 focus:ring-[#1976ba]/20 focus:outline-none">
-                @foreach($roles as $role)
-                    <option value="{{ $role }}">{{ $role }}</option>
-                @endforeach
-            </select>
-            <x-input-error :messages="$errors->get('role')" class="mt-2"></x-input-error>
-        </div>
+        <p class="mt-4 text-sm text-slate-600">New accounts are created with Staff access. Contact an administrator if you need a different role.</p>
 
         <div class="flex items-center justify-between mt-6">
             <a class="text-sm font-medium text-[#176b9c] hover:text-[#11567f] transition-colors" href="{{ route('login') }}">

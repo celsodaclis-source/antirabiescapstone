@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PatientController extends Controller
 {
@@ -114,7 +115,19 @@ class PatientController extends Controller
 
         $animalVaccinated = $request->boolean('animal_vaccinated');
 
+        if ($this->findDuplicatePatient($data)) {
+            return back()->withInput()->withErrors([
+                'first_name' => 'A patient with this name and date of birth already exists. Search for the existing patient and create a returning-patient ticket instead.',
+            ]);
+        }
+
         return DB::transaction(function () use ($data, $animalVaccinated, $request) {
+            if ($this->findDuplicatePatient($data)) {
+                throw ValidationException::withMessages([
+                    'first_name' => 'A patient with this name and date of birth already exists. Search for the existing patient and create a returning-patient ticket instead.',
+                ]);
+            }
+
             $patient = Patient::create([
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'],
@@ -146,8 +159,13 @@ class PatientController extends Controller
 
             Audit::log('patient.register', "Registered patient {$patient->fullName()} (Ticket: ".($ticket ? $ticket->ticket_number : 'none').")", $patient);
 
+            if ($request->user()->role === 'Staff') {
+                return redirect()->route('staff.tickets.print', $ticket)
+                    ->with('status', "Patient registered successfully. Ticket {$ticket->ticket_number} generated.");
+            }
+
             return redirect()->route('patients.show', $patient)
-                ->with('status', 'Patient registered successfully.'.( $ticket ? " Ticket {$ticket->ticket_number} generated." : ''));
+                ->with('status', "Patient registered successfully. Ticket {$ticket->ticket_number} generated.");
         });
     }
 
@@ -294,6 +312,23 @@ class PatientController extends Controller
     protected function nextTicketNumber(bool $isPriority = false): string
     {
         return QueueTicketNumber::next($isPriority);
+    }
+
+    private function findDuplicatePatient(array $data): ?Patient
+    {
+        return Patient::query()
+            ->whereRaw('LOWER(TRIM(first_name)) = ?', [mb_strtolower(trim($data['first_name']))])
+            ->whereRaw('LOWER(TRIM(last_name)) = ?', [mb_strtolower(trim($data['last_name']))])
+            ->whereDate('dob', $data['dob'])
+            ->where(function ($query) use ($data) {
+                $middleName = trim((string) ($data['middle_name'] ?? ''));
+                if ($middleName === '') {
+                    $query->whereNull('middle_name')->orWhere('middle_name', '');
+                } else {
+                    $query->whereRaw('LOWER(TRIM(middle_name)) = ?', [mb_strtolower($middleName)]);
+                }
+            })
+            ->first();
     }
 
     protected function generateSchedules(Patient $patient, string $biteDate, int $doseCount = 4): void

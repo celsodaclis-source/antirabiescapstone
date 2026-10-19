@@ -31,14 +31,11 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $roles = User::roles();
-
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'contact_number' => ['required', 'string', 'max:20'],
-            'role' => ['required', 'string', 'in:'.implode(',', $roles)],
         ]);
 
         $user = User::create([
@@ -46,7 +43,8 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'contact_number' => $request->contact_number,
-            'role' => $request->role,
+            // Public self-registration must never grant elevated application roles.
+            'role' => 'Staff',
         ]);
 
         event(new Registered($user));
@@ -55,6 +53,6 @@ class RegisteredUserController extends Controller
 
         Audit::log('auth.register', "New user registered: {$user->name} ({$user->role})", $user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect()->route('staff.dashboard');
     }
 }

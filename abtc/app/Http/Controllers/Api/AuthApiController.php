@@ -44,14 +44,11 @@ class AuthApiController extends Controller
 
     public function register(Request $request): JsonResponse
     {
-        $roles = User::roles();
-
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'contact_number' => ['nullable', 'string', 'max:20'],
-            'role' => ['required', 'string', 'in:'.implode(',', $roles)],
         ]);
 
         $user = User::create([
@@ -59,7 +56,7 @@ class AuthApiController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'contact_number' => $request->contact_number,
-            'role' => $request->role,
+            'role' => 'Staff',
         ]);
 
         $token = $user->createToken('api-registration')->plainTextToken;

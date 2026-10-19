@@ -31,6 +31,11 @@ class AuthenticatedSessionController extends Controller
 
         Audit::log('auth.login', 'User logged in: ' . auth()->user()->name);
 
+        $user = $request->user();
+        if ($user->role === 'Staff') {
+            return redirect()->route('staff.dashboard');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

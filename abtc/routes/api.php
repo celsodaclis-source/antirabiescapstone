@@ -41,7 +41,7 @@ Route::prefix('queue')->name('api.queue.')->group(function () {
 });
 
 // Protected API routes
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse,Administrative Staff'])->group(function () {
     Route::get('user', [AuthApiController::class, 'user']);
     Route::post('logout', [AuthApiController::class, 'logout']);
 

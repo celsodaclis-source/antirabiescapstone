@@ -11,13 +11,17 @@ use App\Http\Controllers\SmsController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return auth()->user()?->role === 'Staff'
+        ? redirect()->route('staff.dashboard')
+        : redirect()->route('dashboard');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::middleware('role:Admin,Doctor,Nurse,Administrative Staff')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Patient Registration & Records
@@ -96,9 +100,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/backup/{backup}', [BackupController::class, 'destroy'])->name('backup.destroy');
     });
 
+    });
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::middleware('role:Staff')->prefix('staff')->name('staff.')->group(function () {
+        Route::get('/dashboard', [StaffController::class, 'dashboard'])->name('dashboard');
+        Route::get('/patients/register', [PatientController::class, 'create'])->name('patients.create');
+        Route::post('/patients/register', [PatientController::class, 'store'])->name('patients.store');
+        Route::get('/patients/search', [StaffController::class, 'searchPatients'])->name('patients.search');
+        Route::get('/tickets/create', [StaffController::class, 'createTicket'])->name('tickets.create');
+        Route::post('/tickets', [StaffController::class, 'storeTicket'])->name('tickets.store');
+        Route::get('/tickets/{ticket}/print', [StaffController::class, 'printTicket'])->name('tickets.print');
+        Route::get('/queue', [StaffController::class, 'queue'])->name('queue.index');
+    });
 });
 
 require __DIR__.'/auth.php';

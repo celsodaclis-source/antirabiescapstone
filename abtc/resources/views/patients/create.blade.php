@@ -1,9 +1,15 @@
 <x-app-layout>
     <x-slot name="header">Register New Patient</x-slot>
 
+    @php
+        $isStaffUser = Auth::user()->role === 'Staff';
+        $registrationAction = $isStaffUser ? route('staff.patients.store') : route('patients.store');
+        $cancelRoute = $isStaffUser ? route('staff.patients.search') : route('patients.index');
+    @endphp
+
     <div class="py-6 text-black">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-black">
-            <form method="POST" action="{{ route('patients.store') }}" class="bg-white shadow rounded-lg p-6 space-y-6">
+            <form method="POST" action="{{ $registrationAction }}" class="bg-white shadow rounded-lg p-6 space-y-6">
                 @csrf
 
                 {{-- Patient Information Section --}}
@@ -193,7 +199,7 @@
 
                 {{-- Actions --}}
                 <div class="flex justify-end gap-3">
-                    <a href="{{ route('patients.index') }}" class="px-4 py-2 text-black hover:underline">Cancel</a>
+                    <a href="{{ $cancelRoute }}" class="px-4 py-2 text-black hover:underline">Cancel</a>
                     <button type="submit" id="register-patient" @disabled(! old('register_queue')) class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f] transition-colors disabled:cursor-not-allowed disabled:opacity-50">Register Patient</button>
                 </div>
             </form>
@@ -224,7 +230,7 @@
             const dob = document.getElementById('dob');
             if (dob && dob.value) calcAge(dob);
 
-            const form = document.querySelector('form[action="{{ route('patients.store') }}"]');
+            const form = document.querySelector('form[action="{{ $registrationAction }}"]');
             const patientType = document.getElementById('patient_type');
             const ticketFlag = document.getElementById('register_queue');
             const generateTicketButton = document.getElementById('generate-ticket');
