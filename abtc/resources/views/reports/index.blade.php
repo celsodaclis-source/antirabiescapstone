@@ -21,42 +21,42 @@
             </form>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-black">
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#176b9c] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Patients Registered</div>
                     <div class="text-3xl font-bold">{{ $stats['patients_registered'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">New patient records created during the selected period.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#ffad00] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Patients Served</div>
                     <div class="text-3xl font-bold">{{ $stats['patients_served'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Queue tickets completed during the selected period.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#00a5e8] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Vaccinations Administered</div>
                     <div class="text-3xl font-bold">{{ $stats['vaccinations_administered'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Vaccine doses recorded as administered during the selected period.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#176b9c] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Missed Appointments</div>
                     <div class="text-3xl font-bold">{{ $stats['missed_appointments'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Vaccination appointments marked missed in the selected period.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#ffad00] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Overdue Follow-ups</div>
                     <div class="text-3xl font-bold">{{ $stats['overdue_followups'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Scheduled or missed doses with dates before today.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#00a5e8] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">Vaccine Stock on Hand</div>
                     <div class="text-3xl font-bold">{{ $stats['inventory_on_hand'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Current total quantity across all vaccine inventory batches.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#176b9c] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">New Stock Received</div>
                     <div class="text-3xl font-bold">{{ $stats['new_inventory_received'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">Vaccine quantity received between the selected dates.</p>
                 </div>
-                <div class="bg-white rounded-lg shadow p-5 border-2 border-[#ffad00] text-black">
+                <div class="bg-white rounded-lg shadow p-5 border border-slate-200 text-black">
                     <div class="text-sm text-black">SMS Delivered</div>
                     <div class="text-3xl font-bold">{{ $stats['sms_delivered'] }}</div>
                     <p class="mt-2 text-xs text-slate-500">SMS records marked delivered during the selected period.</p>
