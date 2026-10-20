@@ -7,14 +7,19 @@ use App\Models\Patient;
 use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
 use App\Models\VaccineInventory;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AbtcDemoDataSeeder extends Seeder
 {
     public function run(): void
     {
         mt_srand(20261019);
+
+        $this->seedMissingRoleAccounts();
 
         $stock = collect(['PVRV', 'PCECV'])->mapWithKeys(function (string $vaccine) {
             $batchNumber = 'DEMO-'.$vaccine.'-2026';
@@ -32,9 +37,24 @@ class AbtcDemoDataSeeder extends Seeder
             return [$vaccine => $inventory];
         });
 
+        // Keep 50 clearly marked demo lots without replacing any existing stock.
+        for ($batch = 3; $batch <= 50; $batch++) {
+            $vaccine = $batch % 2 === 0 ? 'PVRV' : 'PCECV';
+            VaccineInventory::firstOrCreate(
+                ['batch_number' => sprintf('DEMO-%s-2026-%03d', $vaccine, $batch)],
+                [
+                    'vaccine_name' => $vaccine,
+                    'quantity' => 100 + (($batch * 17) % 401),
+                    'received_date' => today()->subDays(($batch * 7) % 180),
+                    'expiration_date' => today()->addMonths(6 + ($batch % 30)),
+                    'low_stock_threshold' => 10,
+                ],
+            );
+        }
+
         $created = 0;
         DB::transaction(function () use ($stock, &$created) {
-            for ($number = 1; $number <= 100; $number++) {
+            for ($number = 1; $number <= 150; $number++) {
                 $marker = sprintf('DEMO SEED ONLY #%03d - ', $number);
                 if (Patient::where('address', 'like', $marker.'%')->exists()) {
                     continue;
@@ -143,8 +163,35 @@ class AbtcDemoDataSeeder extends Seeder
             }
         });
 
-        $this->command?->info("Added {$created} demo patients (100 maximum). Existing records were preserved.");
+        $this->command?->info("Added {$created} demo patients (150 maximum) and ensured 50 demo inventory batches. Existing records were preserved.");
         $this->command?->line('Demo-only records are marked in the patient address; no existing records were deleted or reset.');
+    }
+
+    private function seedMissingRoleAccounts(): void
+    {
+        foreach (User::roles() as $role) {
+            if (User::where('role', $role)->exists()) {
+                continue;
+            }
+
+            $emailPrefix = 'demo-'.Str::slug($role);
+            $email = $emailPrefix.'@abtc.local';
+            $suffix = 1;
+            while (User::where('email', $email)->exists()) {
+                $email = $emailPrefix.'-'.$suffix++.'@abtc.local';
+            }
+
+            $password = Str::random(24);
+            User::create([
+                'name' => 'Demo '.$role,
+                'email' => $email,
+                'email_verified_at' => now(),
+                'password' => Hash::make($password),
+                'role' => $role,
+            ]);
+
+            $this->command?->warn("Created missing {$role} demo account: {$email} (temporary password: {$password})");
+        }
     }
 
     private function randomItem(array $items): mixed
