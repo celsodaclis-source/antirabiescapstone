@@ -109,7 +109,7 @@ class StaffAccessTest extends TestCase
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $this->actingAs($nurse)->get(route('patients.create'))
             ->assertOk()
-            ->assertSee('Vaccination Plan')
+            ->assertDontSee('Vaccination Plan')
             ->assertSee('Route for medical review');
 
         $data = $this->registrationData('Casey');
@@ -144,20 +144,84 @@ class StaffAccessTest extends TestCase
         $patient = Patient::where('first_name', 'Jordan')->firstOrFail();
 
         $doctor = User::factory()->create(['role' => 'Doctor']);
+        $nurse = User::factory()->create(['role' => 'Nurse']);
         $staff = $this->staff;
         $this->actingAs($staff)->get(route('patients.plan', $patient))->assertForbidden();
-        $this->actingAs($doctor)->get(route('patients.plan', $patient))->assertOk();
+        $this->actingAs($nurse)->get(route('patients.plan', $patient))->assertForbidden();
+        $this->actingAs($nurse)->put(route('patients.plan.store', $patient), [])->assertForbidden();
+        $this->actingAs($doctor)->get(route('patients.plan', $patient))
+            ->assertOk()
+            ->assertSee('Exposure Category')
+            ->assertSee('Vaccination Schedule')
+            ->assertSee('Vaccine Type')
+            ->assertSee('Number of Doses in Provider-Ordered Schedule');
 
         $this->actingAs($doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'II', 'schedule' => 'days_0_3_7_28',
             'vaccine_type' => 'PVRV', 'planned_dose_count' => 4, 'requires_medical_review' => '1',
         ])->assertRedirect(route('patients.show', $patient));
 
         $patient->refresh();
         $this->assertSame('PVRV', $patient->vaccine_type);
+        $this->assertSame('II', $patient->biteIncidents()->firstOrFail()->exposure_category);
         $this->assertSame(4, $patient->vaccinationSchedules()->count());
+        $biteDate = $patient->biteIncidents()->firstOrFail()->date_of_bite;
+        $this->assertSame(
+            [0, 3, 7, 28],
+            $patient->vaccinationSchedules()->orderBy('dose_number')->get()
+                ->map(fn ($dose) => (int) $biteDate->diffInDays($dose->scheduled_date, false))
+                ->all()
+        );
         $this->assertSame('medical_review', $patient->tickets()->firstOrFail()->service_stage);
 
-        $this->actingAs($doctor)->get(route('patients.plan', $patient))->assertRedirect(route('patients.show', $patient));
+        $this->actingAs($doctor)->get(route('patients.edit', $patient))
+            ->assertOk()
+            ->assertSee('Patient Assessment and Vaccination Plan')
+            ->assertSee('Exposure Category')
+            ->assertSee('Schedule')
+            ->assertSee('Vaccine Type')
+            ->assertSee('Number of Doses in Provider-Ordered Schedule')
+            ->assertSee('PVRV')
+            ->assertSee('value="II" selected', false)
+            ->assertSee('value="days_0_3_7_28" selected', false);
+
+        $this->actingAs($doctor)->get(route('patients.plan', $patient))
+            ->assertOk()
+            ->assertSee('Exposure Category')
+            ->assertSee('Vaccination Schedule')
+            ->assertSee('Vaccine Type')
+            ->assertSee('Number of Doses in Provider-Ordered Schedule')
+            ->assertSee('PVRV')
+            ->assertSee('4 doses')
+            ->assertSee('value="II" selected', false)
+            ->assertSee('value="days_0_3_7_28" selected', false);
+        $this->actingAs($doctor)->get(route('patients.show', $patient))
+            ->assertOk()
+            ->assertSee('II')
+            ->assertSee('PVRV')
+            ->assertSee('Planned doses:');
+
+        $this->actingAs($doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'III', 'schedule' => 'days_0_3_7',
+            'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
+        ])->assertSessionHasErrors('planned_dose_count');
+        $this->assertSame(4, $patient->vaccinationSchedules()->count());
+
+        $this->actingAs($doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'III', 'schedule' => 'days_0_3_7',
+            'vaccine_type' => 'PVRV', 'planned_dose_count' => 3,
+        ])->assertRedirect(route('patients.show', $patient));
+        $this->assertSame(3, $patient->vaccinationSchedules()->count());
+        $this->assertSame('III', $patient->biteIncidents()->firstOrFail()->fresh()->exposure_category);
+
+        $queuedDose = $patient->vaccinationSchedules()->firstOrFail();
+        $linkedTicket = \App\Services\QueueTicketNumber::forReturningPatient($patient, $queuedDose);
+        $this->actingAs($doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'III', 'schedule' => 'days_0_3_7_28',
+            'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
+        ])->assertSessionHasErrors('planned_dose_count');
+        $this->assertSame(3, $patient->vaccinationSchedules()->count());
+        $this->assertDatabaseHas('tickets', ['id' => $linkedTicket->id, 'vaccination_schedule_id' => $queuedDose->id]);
     }
 
     public function test_staff_cannot_access_admin_or_clinical_modules_and_can_log_out(): void

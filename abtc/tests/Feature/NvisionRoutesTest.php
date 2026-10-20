@@ -67,7 +67,7 @@ class NvisionRoutesTest extends TestCase
         }
     }
 
-    public function test_patient_registration_flow_creates_ticket_and_schedules(): void
+    public function test_patient_registration_creates_ticket_and_doctor_plan_creates_schedules(): void
     {
         $staff = User::where('email', 'nurse@abtc.gov.ph')->first();
         $before = \App\Models\Ticket::count();
@@ -77,13 +77,19 @@ class NvisionRoutesTest extends TestCase
             'dob' => '1990-01-01', 'contact_number' => '09171234567',
             'address' => '123 Test St', 'barangay' => 'Barangka',
             'date_of_bite' => now()->toDateString(), 'animal_type' => 'Dog',
-            'exposure_category' => 'III', 'register_queue' => true,
-            'patient_type' => 'regular', 'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
+            'register_queue' => true, 'patient_type' => 'regular',
         ]);
 
         $response->assertRedirect();
         $this->assertEquals($before + 1, \App\Models\Ticket::count());
-        $this->assertEquals(4, \App\Models\VaccinationSchedule::where('patient_id', \App\Models\Patient::max('id'))->count());
+        $patient = \App\Models\Patient::latest('id')->firstOrFail();
+        $this->assertSame(0, $patient->vaccinationSchedules()->count());
+        $doctor = User::where('role', 'Doctor')->firstOrFail();
+        $this->actingAs($doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'III', 'schedule' => 'days_0_3_7_28',
+            'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
+        ])->assertRedirect(route('patients.show', $patient));
+        $this->assertEquals(4, $patient->vaccinationSchedules()->count());
     }
 
     public function test_non_admin_cannot_access_settings(): void

@@ -4,6 +4,7 @@
     @php
         $isStaffUser = Auth::user()->role === 'Staff';
         $isClinicalUser = in_array(Auth::user()->role, ['Doctor', 'Nurse'], true);
+        $canSelectExposureAtRegistration = in_array(Auth::user()->role, ['Admin', 'Administrative Staff'], true);
         $registrationAction = $isStaffUser ? route('staff.patients.store') : route('patients.store');
         $cancelRoute = $isStaffUser ? route('staff.patients.search') : route('patients.index');
     @endphp
@@ -112,7 +113,7 @@
                         <x-text-input id="animal_type" name="animal_type" class="block mt-1 w-full" :value="old('animal_type')" placeholder="Dog, Cat, etc." required />
                         <x-input-error :messages="$errors->get('animal_type')" class="mt-2 text-rose-100 border-rose-200" />
                     </div>
-                    @unless ($isStaffUser)
+                    @if ($canSelectExposureAtRegistration)
                     <div>
                         <x-input-label for="exposure_category" value="Exposure Category" class="text-white" />
                         <select id="exposure_category" name="exposure_category" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-[#1976ba] focus:outline-none focus:ring-2 focus:ring-[#1976ba]/20">
@@ -123,7 +124,7 @@
                         </select>
                         <x-input-error :messages="$errors->get('exposure_category')" class="mt-2 text-rose-100 border-rose-200" />
                     </div>
-                    @endunless
+                    @endif
                     <div>
                         <x-input-label for="bite_site" value="Site of Bite" class="text-white" />
                         <x-text-input id="bite_site" name="bite_site" class="block mt-1 w-full" :value="old('bite_site')" placeholder="Right arm, leg, etc." />
@@ -149,37 +150,6 @@
 
                 {{-- Clinical assessment sections are recorded by Doctors and Nurses only. --}}
                 @if ($isClinicalUser)
-                <section class="rounded-lg border border-sky-200 bg-sky-50 p-5">
-                    <div class="mb-2">
-                        <h3 class="font-semibold text-slate-900">Vaccination Plan</h3>
-                        <p class="mt-1 text-sm text-slate-700">Review the animal and exposure details, then record the vaccine and dose schedule ordered by the healthcare provider. Animal type alone does not determine the regimen.</p>
-                    </div>
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <x-input-label for="vaccine_type" value="Vaccine Type" />
-                            <select id="vaccine_type" name="vaccine_type" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
-                                <option value="">Select stocked vaccine</option>
-                                @foreach ($vaccineTypes as $type)
-                                    <option value="{{ $type }}" {{ old('vaccine_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
-                                @endforeach
-                            </select>
-                            @if (empty($vaccineTypes))
-                                <p class="mt-1 text-sm text-rose-700">No eligible vaccine is in stock. Update Inventory before registering the vaccination plan.</p>
-                            @endif
-                            <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
-                        </div>
-                        <div>
-                            <x-input-label for="planned_dose_count" value="Number of Doses in Provider-Ordered Schedule" />
-                            <select id="planned_dose_count" name="planned_dose_count" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
-                                <option value="">Select the ordered schedule</option>
-                                <option value="3" {{ old('planned_dose_count') === '3' ? 'selected' : '' }}>3 doses — Day 0, Day 3, Day 7</option>
-                                <option value="4" {{ old('planned_dose_count', '4') === '4' ? 'selected' : '' }}>4 doses — Day 0, Day 3, Day 7, Day 28</option>
-                            </select>
-                            <x-input-error :messages="$errors->get('planned_dose_count')" class="mt-2" />
-                        </div>
-                    </div>
-                </section>
-
                 <section class="rounded-lg border border-amber-200 bg-amber-50 p-5">
                     <label class="inline-flex items-start gap-3">
                         <input type="checkbox" name="requires_medical_review" value="1" {{ old('requires_medical_review') ? 'checked' : '' }} class="mt-1 rounded border-amber-400 text-amber-700 focus:ring-amber-600">

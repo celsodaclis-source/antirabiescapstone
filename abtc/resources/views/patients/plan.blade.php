@@ -49,7 +49,7 @@
                                     <tr>
                                         <td class="px-3 py-2">{{ $b->date_of_bite->format('M d, Y') }}</td>
                                         <td class="px-3 py-2">{{ $b->animal_type }}</td>
-                                        <td class="px-3 py-2">{{ $b->exposure_category }}</td>
+                                        <td class="px-3 py-2">{{ $b->exposure_category ?? 'Pending assessment' }}</td>
                                         <td class="px-3 py-2">{{ $b->bite_site ?? '—' }}</td>
                                         <td class="px-3 py-2">{{ $b->animal_status ?? '—' }}</td>
                                     </tr>
@@ -66,11 +66,21 @@
                     </div>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
+                            <x-input-label for="exposure_category" value="Exposure Category" />
+                            <select id="exposure_category" name="exposure_category" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
+                                <option value="">Select exposure category</option>
+                                <option value="I" {{ old('exposure_category', $patient->biteIncidents->first()?->exposure_category) === 'I' ? 'selected' : '' }}>I</option>
+                                <option value="II" {{ old('exposure_category', $patient->biteIncidents->first()?->exposure_category) === 'II' ? 'selected' : '' }}>II</option>
+                                <option value="III" {{ old('exposure_category', $patient->biteIncidents->first()?->exposure_category) === 'III' ? 'selected' : '' }}>III</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('exposure_category')" class="mt-2" />
+                        </div>
+                        <div>
                             <x-input-label for="vaccine_type" value="Vaccine Type" />
                             <select id="vaccine_type" name="vaccine_type" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
                                 <option value="">Select stocked vaccine</option>
                                 @foreach ($vaccineTypes as $type)
-                                    <option value="{{ $type }}" {{ old('vaccine_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
+                                    <option value="{{ $type }}" {{ old('vaccine_type', $patient->vaccine_type) === $type ? 'selected' : '' }}>{{ $type }}</option>
                                 @endforeach
                             </select>
                             @if (empty($vaccineTypes))
@@ -79,11 +89,20 @@
                             <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
                         </div>
                         <div>
+                            <x-input-label for="schedule" value="Vaccination Schedule" />
+                            <select id="schedule" name="schedule" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
+                                <option value="">Select the provider-ordered schedule</option>
+                                <option value="days_0_3_7" {{ old('schedule', (int) $patient->planned_dose_count === 3 ? 'days_0_3_7' : null) === 'days_0_3_7' ? 'selected' : '' }}>Day 0, Day 3, Day 7</option>
+                                <option value="days_0_3_7_28" {{ old('schedule', (int) $patient->planned_dose_count === 4 ? 'days_0_3_7_28' : null) === 'days_0_3_7_28' ? 'selected' : '' }}>Day 0, Day 3, Day 7, Day 28</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('schedule')" class="mt-2" />
+                        </div>
+                        <div>
                             <x-input-label for="planned_dose_count" value="Number of Doses in Provider-Ordered Schedule" />
                             <select id="planned_dose_count" name="planned_dose_count" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm" required>
                                 <option value="">Select the ordered schedule</option>
-                                <option value="3" {{ old('planned_dose_count') === '3' ? 'selected' : '' }}>3 doses — Day 0, Day 3, Day 7</option>
-                                <option value="4" {{ old('planned_dose_count') === '4' ? 'selected' : '' }}>4 doses — Day 0, Day 3, Day 7, Day 28</option>
+                                <option value="3" {{ (string) old('planned_dose_count', $patient->planned_dose_count) === '3' ? 'selected' : '' }}>3 doses</option>
+                                <option value="4" {{ (string) old('planned_dose_count', $patient->planned_dose_count) === '4' ? 'selected' : '' }}>4 doses</option>
                             </select>
                             <x-input-error :messages="$errors->get('planned_dose_count')" class="mt-2" />
                         </div>
@@ -105,4 +124,21 @@
             </form>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const schedule = document.getElementById('schedule');
+            const doseCount = document.getElementById('planned_dose_count');
+            const scheduleForDoseCount = { '3': 'days_0_3_7', '4': 'days_0_3_7_28' };
+
+            schedule.addEventListener('change', () => {
+                doseCount.value = schedule.value === 'days_0_3_7' ? '3' : schedule.value === 'days_0_3_7_28' ? '4' : '';
+            });
+            doseCount.addEventListener('change', () => {
+                schedule.value = scheduleForDoseCount[doseCount.value] ?? '';
+            });
+        });
+    </script>
+    @endpush
 </x-app-layout>

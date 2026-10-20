@@ -37,6 +37,9 @@ class PatientWorkflowEndToEndTest extends TestCase
         $this->assertSame('new', $new->visit_type);
         $this->assertSame('assessment', $new->service_stage);
         $this->assertSame('waiting', $new->status);
+        $this->assertSame(0, $new->patient->vaccinationSchedules()->count());
+
+        $this->recordPlan($new->patient, 4);
         $this->assertDatabaseCount('vaccination_schedules', 4);
 
         $emergency = $this->registerPatient('Emergency', 'emergency');
@@ -153,9 +156,18 @@ class PatientWorkflowEndToEndTest extends TestCase
             'dob' => '1990-01-01', 'contact_number' => '09171234567', 'address' => '1 Test Road',
             'barangay' => 'Barangka', 'date_of_bite' => now()->toDateString(), 'animal_type' => 'Dog',
             'exposure_category' => 'II', 'register_queue' => '1', 'patient_type' => $patientType,
-            'vaccine_type' => 'PVRV', 'planned_dose_count' => 4,
         ])->assertRedirect();
 
         return Ticket::latest('id')->firstOrFail();
+    }
+
+    private function recordPlan(Patient $patient, int $doseCount): void
+    {
+        $this->actingAs($this->doctor)->put(route('patients.plan.store', $patient), [
+            'exposure_category' => 'II',
+            'schedule' => $doseCount === 3 ? 'days_0_3_7' : 'days_0_3_7_28',
+            'vaccine_type' => 'PVRV',
+            'planned_dose_count' => $doseCount,
+        ])->assertRedirect(route('patients.show', $patient));
     }
 }

@@ -86,7 +86,7 @@
                                 <tr class="hover:bg-sky-50/50">
                                     <td class="px-3 py-2 text-black">{{ $b->date_of_bite->format('M d, Y') }}</td>
                                     <td class="px-3 py-2 text-black">{{ $b->animal_type }}</td>
-                                    <td class="px-3 py-2"><x-status-badge :status="$b->exposure_category === 'III' ? 'missed' : ($b->exposure_category === 'II' ? 'called' : 'scheduled')"></x-status-badge> {{ $b->exposure_category }}</td>
+                                    <td class="px-3 py-2"><x-status-badge :status="$b->exposure_category === 'III' ? 'missed' : ($b->exposure_category === 'II' ? 'called' : 'scheduled')"></x-status-badge> {{ $b->exposure_category ?? 'Pending assessment' }}</td>
                                     <td class="px-3 py-2 text-black">{{ $b->bite_site ?? '—' }}</td>
                                     <td class="px-3 py-2 text-black">{{ $b->animal_status ?? '—' }}</td>
                                     <td class="px-3 py-2 text-black">{{ $b->animal_vaccinated ? 'Yes' : 'No' }}</td>
@@ -107,8 +107,8 @@
                     <p class="mb-3 text-sm text-black">Vaccine plan recorded: <strong>{{ $patient->vaccine_type }}</strong> &middot; Planned doses: <strong>{{ $patient->planned_dose_count ?? $patient->vaccinationSchedules->count() }}</strong></p>
                 @else
                     <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-                        <p class="text-sm text-amber-800">No vaccination plan recorded yet — pending clinical assessment by a Doctor or Nurse.</p>
-                        @role('Doctor', 'Nurse')
+                        <p class="text-sm text-amber-800">No vaccination plan recorded yet — pending clinical assessment by a Doctor.</p>
+                        @role('Doctor')
                             <a href="{{ route('patients.plan', $patient) }}" class="bg-[#176b9c] text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-[#11567f] transition-colors">Record Vaccination Plan</a>
                         @endrole
                     </div>

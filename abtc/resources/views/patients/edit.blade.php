@@ -86,6 +86,87 @@
                     <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700">Save Changes</button>
                 </div>
             </form>
+
+            @if (auth()->user()?->role === 'Doctor' && $patient->biteIncidents->isNotEmpty())
+                @php($biteIncident = $patient->biteIncidents->first())
+                <form method="POST" action="{{ route('patients.plan.store', $patient) }}" class="mt-5 bg-white shadow rounded-lg p-6 space-y-5">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="border-b pb-3">
+                        <h3 class="font-semibold text-black">Patient Assessment and Vaccination Plan</h3>
+                        <p class="mt-1 text-sm text-slate-600">Record the provider-ordered exposure assessment and vaccination schedule.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <x-input-label for="exposure_category" value="Exposure Category" />
+                            <select id="exposure_category" name="exposure_category" class="block mt-1 w-full rounded-md border-slate-300 shadow-sm focus:border-[#1976ba] focus:ring-[#1976ba]" required>
+                                <option value="">Select exposure category</option>
+                                @foreach (['I', 'II', 'III'] as $category)
+                                    <option value="{{ $category }}" {{ old('exposure_category', $biteIncident->exposure_category) === $category ? 'selected' : '' }}>{{ $category }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('exposure_category')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="edit_vaccine_type" value="Vaccine Type" />
+                            <select id="edit_vaccine_type" name="vaccine_type" class="block mt-1 w-full rounded-md border-slate-300 shadow-sm focus:border-[#1976ba] focus:ring-[#1976ba]" required>
+                                <option value="">Select stocked vaccine</option>
+                                @foreach ($vaccineTypes as $type)
+                                    <option value="{{ $type }}" {{ old('vaccine_type', $patient->vaccine_type) === $type ? 'selected' : '' }}>{{ $type }}</option>
+                                @endforeach
+                            </select>
+                            @if (empty($vaccineTypes))
+                                <p class="mt-1 text-xs text-rose-700">No eligible vaccine is currently in stock.</p>
+                            @endif
+                            <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="edit_schedule" value="Schedule" />
+                            <select id="edit_schedule" name="schedule" class="block mt-1 w-full rounded-md border-slate-300 shadow-sm focus:border-[#1976ba] focus:ring-[#1976ba]" required>
+                                <option value="">Select provider-ordered schedule</option>
+                                <option value="days_0_3_7" {{ old('schedule', (int) $patient->planned_dose_count === 3 ? 'days_0_3_7' : null) === 'days_0_3_7' ? 'selected' : '' }}>Day 0, Day 3, Day 7</option>
+                                <option value="days_0_3_7_28" {{ old('schedule', (int) $patient->planned_dose_count === 4 ? 'days_0_3_7_28' : null) === 'days_0_3_7_28' ? 'selected' : '' }}>Day 0, Day 3, Day 7, Day 28</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('schedule')" class="mt-2" />
+                        </div>
+                        <div>
+                            <x-input-label for="edit_planned_dose_count" value="Number of Doses in Provider-Ordered Schedule" />
+                            <select id="edit_planned_dose_count" name="planned_dose_count" class="block mt-1 w-full rounded-md border-slate-300 shadow-sm focus:border-[#1976ba] focus:ring-[#1976ba]" required>
+                                <option value="">Select dose count</option>
+                                <option value="3" {{ (string) old('planned_dose_count', $patient->planned_dose_count) === '3' ? 'selected' : '' }}>3 doses</option>
+                                <option value="4" {{ (string) old('planned_dose_count', $patient->planned_dose_count) === '4' ? 'selected' : '' }}>4 doses</option>
+                            </select>
+                            <x-input-error :messages="$errors->get('planned_dose_count')" class="mt-2" />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 border-t pt-4">
+                        <a href="{{ route('patients.show', $patient) }}" class="px-4 py-2 text-black hover:underline">Cancel</a>
+                        <button type="submit" class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f]">Save Assessment and Plan</button>
+                    </div>
+                </form>
+            @endif
         </div>
     </div>
+
+    @if (auth()->user()?->role === 'Doctor')
+        @push('scripts')
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                const schedule = document.getElementById('edit_schedule');
+                const doseCount = document.getElementById('edit_planned_dose_count');
+                if (!schedule || !doseCount) return;
+                const scheduleForDoseCount = { '3': 'days_0_3_7', '4': 'days_0_3_7_28' };
+                schedule.addEventListener('change', () => {
+                    doseCount.value = schedule.value === 'days_0_3_7' ? '3' : schedule.value === 'days_0_3_7_28' ? '4' : '';
+                });
+                doseCount.addEventListener('change', () => {
+                    schedule.value = scheduleForDoseCount[doseCount.value] ?? '';
+                });
+            });
+        </script>
+        @endpush
+    @endif
 </x-app-layout>
