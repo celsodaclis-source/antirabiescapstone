@@ -60,13 +60,46 @@
                 <canvas id="reportChart" height="100"></canvas>
             </div>
 
+            <section>
+                <h2 class="mb-4 text-lg font-semibold text-slate-800">Operational Analytics</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    @foreach ([
+                        ['patientTypeChart', 'Patient Type', $analytics['patient_types'], 'doughnut'],
+                        ['patientSexChart', 'Patient Sex', $analytics['patient_sex'], 'doughnut'],
+                        ['exposureChart', 'Exposure Category', $analytics['exposure_categories'], 'doughnut'],
+                        ['animalTypeChart', 'Animal Type', $analytics['animal_types'], 'bar'],
+                        ['queueChart', 'Queue Status', $analytics['ticket_statuses'], 'bar'],
+                        ['serviceStageChart', 'Queue Service Stage', $analytics['ticket_stages'], 'bar'],
+                        ['visitTypeChart', 'Visit Type', $analytics['visit_types'], 'doughnut'],
+                        ['scheduleChart', 'Vaccination Schedule Status', $analytics['schedule_statuses'], 'bar'],
+                        ['dosePlanChart', 'Provider-Ordered Dose Count', $analytics['planned_doses'], 'bar'],
+                        ['vaccineTypeChart', 'Prescribed Vaccine Type', $analytics['vaccine_types'], 'bar'],
+                        ['barangayChart', 'Top 10 Patient Barangays', $analytics['barangays'], 'bar'],
+                        ['vaccineStockChart', 'Current Vaccine Stock by Type', $analytics['inventory_by_vaccine'], 'bar'],
+                        ['smsChart', 'SMS Delivery Status', $analytics['sms_statuses'], 'doughnut'],
+                        ['auditChart', 'Recorded System Actions', $analytics['audit_actions'], 'bar'],
+                    ] as [$chartId, $chartTitle, $chartData, $chartType])
+                        <div class="rounded-lg bg-white p-5 shadow text-black">
+                            <h3 class="mb-3 font-semibold">{{ $chartTitle }}</h3>
+                            @if ($chartData->isEmpty())
+                                <p class="flex h-56 items-center justify-center text-sm text-slate-500">No records available.</p>
+                            @else
+                                <div class="relative h-56">
+                                    <canvas id="{{ $chartId }}"></canvas>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 @php
                     $sections = [
-                        ['Patient Registrations', ['Patient type' => $analytics['patient_types'], 'Top barangays' => $analytics['barangays']]],
+                        ['Patient Registrations', ['Patient type' => $analytics['patient_types'], 'Sex' => $analytics['patient_sex'], 'Top barangays' => $analytics['barangays']]],
                         ['Animal Bite Assessments', ['Exposure category' => $analytics['exposure_categories'], 'Animal type' => $analytics['animal_types']]],
-                        ['Queue Activity', ['Ticket status' => $analytics['ticket_statuses'], 'Service stage' => $analytics['ticket_stages']]],
-                        ['Vaccination Activity', ['Schedule status' => $analytics['schedule_statuses'], 'Vaccine type' => $analytics['vaccine_types']]],
+                        ['Queue Activity', ['Ticket status' => $analytics['ticket_statuses'], 'Service stage' => $analytics['ticket_stages'], 'Visit type' => $analytics['visit_types']]],
+                        ['Vaccination Activity', ['Schedule status' => $analytics['schedule_statuses'], 'Vaccine type' => $analytics['vaccine_types'], 'Provider-ordered doses' => $analytics['planned_doses']]],
                         ['SMS Activity', ['Delivery status' => $analytics['sms_statuses']]],
                         ['System Audit Activity', ['Recorded actions' => $analytics['audit_actions']]],
                     ];
@@ -116,19 +149,54 @@
     <script src="{{ asset('js/chart.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const canvas = document.getElementById('reportChart');
-            if (!canvas || typeof Chart === 'undefined') return;
-            new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels: @json($labels),
-                    datasets: [
-                        { label: 'Patients Registered', data: @json($patientValues), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.3 },
-                        { label: 'Vaccinations Administered', data: @json($vaccinationValues), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', fill: false, tension: 0.3 }
-                    ]
-                },
-                options: { responsive: true, plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-            });
+            if (typeof Chart === 'undefined') return;
+            const palette = ['#4f46e5', '#059669', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#14b8a6', '#f97316', '#64748b', '#ec4899'];
+            const renderChart = function (id, type, labels, values, horizontal = false, extraDatasets = []) {
+                const canvas = document.getElementById(id);
+                if (!canvas) return;
+                const isCircular = type === 'doughnut';
+                new Chart(canvas, {
+                    type: type,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: id === 'reportChart' ? 'Patients Registered' : undefined,
+                            data: values,
+                            backgroundColor: isCircular ? palette : (type === 'line' ? 'rgba(79,70,229,0.12)' : palette[0]),
+                            borderColor: isCircular ? '#ffffff' : palette[0],
+                            borderWidth: 1,
+                            borderRadius: isCircular ? 0 : 4,
+                            fill: type === 'line',
+                            tension: type === 'line' ? 0.3 : 0,
+                        }, ...extraDatasets]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: horizontal ? 'y' : 'x',
+                        plugins: { legend: { display: isCircular, position: 'bottom' } },
+                        scales: isCircular ? {} : {
+                            x: horizontal ? { beginAtZero: true, ticks: { precision: 0 } } : {},
+                            y: horizontal ? {} : { beginAtZero: true, ticks: { precision: 0 } },
+                        },
+                    }
+                });
+            };
+            renderChart('reportChart', 'line', @json($labels), @json($patientValues), false, [{ label: 'Vaccinations Administered', data: @json($vaccinationValues), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', fill: false, tension: 0.3 }]);
+            renderChart('patientTypeChart', 'doughnut', @json($analytics['patient_types']->keys()), @json($analytics['patient_types']->values()));
+            renderChart('patientSexChart', 'doughnut', @json($analytics['patient_sex']->keys()), @json($analytics['patient_sex']->values()));
+            renderChart('exposureChart', 'doughnut', @json($analytics['exposure_categories']->keys()), @json($analytics['exposure_categories']->values()));
+            renderChart('animalTypeChart', 'bar', @json($analytics['animal_types']->keys()), @json($analytics['animal_types']->values()), true);
+            renderChart('queueChart', 'bar', @json($analytics['ticket_statuses']->keys()), @json($analytics['ticket_statuses']->values()));
+            renderChart('serviceStageChart', 'bar', @json($analytics['ticket_stages']->keys()), @json($analytics['ticket_stages']->values()), true);
+            renderChart('visitTypeChart', 'doughnut', @json($analytics['visit_types']->keys()), @json($analytics['visit_types']->values()));
+            renderChart('scheduleChart', 'bar', @json($analytics['schedule_statuses']->keys()), @json($analytics['schedule_statuses']->values()));
+            renderChart('dosePlanChart', 'bar', @json($analytics['planned_doses']->keys()), @json($analytics['planned_doses']->values()));
+            renderChart('vaccineTypeChart', 'bar', @json($analytics['vaccine_types']->keys()), @json($analytics['vaccine_types']->values()), true);
+            renderChart('barangayChart', 'bar', @json($analytics['barangays']->keys()), @json($analytics['barangays']->values()), true);
+            renderChart('vaccineStockChart', 'bar', @json($analytics['inventory_by_vaccine']->keys()), @json($analytics['inventory_by_vaccine']->values()));
+            renderChart('smsChart', 'doughnut', @json($analytics['sms_statuses']->keys()), @json($analytics['sms_statuses']->values()));
+            renderChart('auditChart', 'bar', @json($analytics['audit_actions']->keys()), @json($analytics['audit_actions']->values()), true);
         });
     </script>
     @endpush

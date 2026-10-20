@@ -87,11 +87,14 @@ class ReportController extends Controller
 
         return [
             'patient_types' => $this->breakdown(Patient::whereBetween('created_at', [$fromDt, $toDt]), 'patient_type'),
+            'patient_sex' => $this->breakdown(Patient::whereBetween('created_at', [$fromDt, $toDt]), 'sex'),
+            'planned_doses' => $this->breakdown(Patient::whereBetween('created_at', [$fromDt, $toDt])->whereNotNull('planned_dose_count'), 'planned_dose_count'),
             'barangays' => $this->breakdown(Patient::whereBetween('created_at', [$fromDt, $toDt]), 'barangay', 10),
             'exposure_categories' => $this->breakdown(BiteIncident::whereBetween('created_at', [$fromDt, $toDt]), 'exposure_category'),
             'animal_types' => $this->breakdown(BiteIncident::whereBetween('created_at', [$fromDt, $toDt]), 'animal_type', 10),
             'ticket_statuses' => $this->breakdown(Ticket::whereBetween('created_at', [$fromDt, $toDt]), 'status'),
             'ticket_stages' => $this->breakdown(Ticket::whereBetween('created_at', [$fromDt, $toDt]), 'service_stage'),
+            'visit_types' => $this->breakdown(Ticket::whereBetween('created_at', [$fromDt, $toDt]), 'visit_type'),
             'schedule_statuses' => $this->breakdown(clone $scheduled, 'status'),
             'vaccine_types' => $this->breakdown(Patient::whereBetween('created_at', [$fromDt, $toDt])->whereNotNull('vaccine_type'), 'vaccine_type'),
             'inventory_by_vaccine' => $inventoryByVaccine,
@@ -128,8 +131,9 @@ class ReportController extends Controller
             ['New inventory received', $stats['new_inventory_received']], ['SMS delivered', $stats['sms_delivered']],
         ];
         $sections = [
-            'Patient type' => 'patient_types', 'Top barangays' => 'barangays', 'Exposure category' => 'exposure_categories',
-            'Animal type' => 'animal_types', 'Queue status' => 'ticket_statuses', 'Queue service stage' => 'ticket_stages',
+            'Patient type' => 'patient_types', 'Patient sex' => 'patient_sex', 'Planned doses' => 'planned_doses',
+            'Top barangays' => 'barangays', 'Exposure category' => 'exposure_categories',
+            'Animal type' => 'animal_types', 'Queue status' => 'ticket_statuses', 'Queue service stage' => 'ticket_stages', 'Visit type' => 'visit_types',
             'Vaccination schedule status' => 'schedule_statuses', 'Vaccine type' => 'vaccine_types',
             'Current stock by vaccine' => 'inventory_by_vaccine', 'SMS status' => 'sms_statuses', 'Audit action' => 'audit_actions',
         ];

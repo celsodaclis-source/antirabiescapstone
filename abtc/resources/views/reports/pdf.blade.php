@@ -48,9 +48,9 @@
     </table>
 
     @foreach ([
-        'Patient Types' => 'patient_types', 'Top Barangays' => 'barangays',
-        'Exposure Categories' => 'exposure_categories', 'Animal Types' => 'animal_types',
-        'Queue Statuses' => 'ticket_statuses', 'Queue Service Stages' => 'ticket_stages',
+        'Patient Types' => 'patient_types', 'Patient Sex' => 'patient_sex', 'Planned Dose Count' => 'planned_doses',
+        'Top Barangays' => 'barangays', 'Exposure Categories' => 'exposure_categories', 'Animal Types' => 'animal_types',
+        'Queue Statuses' => 'ticket_statuses', 'Queue Service Stages' => 'ticket_stages', 'Visit Types' => 'visit_types',
         'Vaccination Schedule Statuses' => 'schedule_statuses', 'Vaccine Types' => 'vaccine_types',
         'SMS Delivery Statuses' => 'sms_statuses', 'Recorded Audit Actions' => 'audit_actions',
         'Current Vaccine Stock by Type' => 'inventory_by_vaccine',
