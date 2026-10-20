@@ -91,7 +91,6 @@ class PatientController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $isClinical = $this->isClinicalUser($request);
-        $isStaff = $request->user()->role === 'Staff';
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
@@ -105,7 +104,7 @@ class PatientController extends Controller
             'barangay' => ['required', 'string', 'max:100', 'in:'.implode(',', Patient::barangays())],
             'date_of_bite' => ['required', 'date', 'before_or_equal:today'],
             'animal_type' => ['required', 'string', 'max:100'],
-            'exposure_category' => $isStaff ? ['nullable', 'in:I,II,III'] : ['required', 'in:I,II,III'],
+            'exposure_category' => ['required', 'in:I,II,III'],
             'bite_site' => ['nullable', 'string', 'max:150'],
             'animal_status' => ['nullable', 'in:Healthy,Sick,Dead,Unknown'],
             'animal_vaccinated' => ['nullable', 'boolean'],
@@ -155,7 +154,7 @@ class PatientController extends Controller
                 'patient_id' => $patient->id,
                 'date_of_bite' => $data['date_of_bite'],
                 'animal_type' => $data['animal_type'],
-                'exposure_category' => data_get($data, 'exposure_category'),
+                'exposure_category' => $data['exposure_category'],
                 'bite_site' => data_get($data, 'bite_site'),
                 'animal_status' => data_get($data, 'animal_status'),
                 'animal_vaccinated' => $animalVaccinated,

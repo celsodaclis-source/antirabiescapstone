@@ -123,8 +123,6 @@
                         </select>
                         <x-input-error :messages="$errors->get('exposure_category')" class="mt-2 text-rose-100 border-rose-200" />
                     </div>
-                    @else
-                    <input type="hidden" name="exposure_category" value="">
                     @endunless
                     <div>
                         <x-input-label for="bite_site" value="Site of Bite" class="text-white" />
@@ -211,7 +209,7 @@
                 {{-- Actions --}}
                 <div class="flex justify-end gap-3">
                     <a href="{{ $cancelRoute }}" class="px-4 py-2 text-black hover:underline">Cancel</a>
-                    <button type="submit" id="register-patient" @disabled(! old('register_queue')) class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f] transition-colors disabled:cursor-not-allowed disabled:opacity-50">Register Patient</button>
+                    <button type="submit" id="register-patient" @disabled(! $isStaffUser && ! old('register_queue')) class="bg-[#176b9c] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#11567f] transition-colors disabled:cursor-not-allowed disabled:opacity-50">Register Patient</button>
                 </div>
             </form>
         </div>
