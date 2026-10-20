@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-    <h1 class="text-black">N-VISION &mdash; Anti-Rabies Vaccination Report</h1>
+    <h1 class="text-black">N-VISION &mdash; Reports and Analytics</h1>
     <div class="sub text-black">Mandaluyong City Animal Bite Treatment Center (ABTC) &middot; Report period: {{ $from }} to {{ $to }}</div>
 
     <div class="grid text-black">
@@ -28,9 +28,9 @@
         <div class="card text-black"><div class="v text-black">{{ $stats['vaccinations_administered'] }}</div><div class="l text-black">Vaccinations Administered</div></div>
         <div class="card text-black"><div class="v text-black">{{ $stats['missed_appointments'] }}</div><div class="l text-black">Missed Appointments</div></div>
         <div class="card text-black"><div class="v text-black">{{ $stats['overdue_followups'] }}</div><div class="l text-black">Overdue Follow-ups</div></div>
-        <div class="card text-black"><div class="v text-black">{{ $stats['inventory_used'] }}</div><div class="l text-black">Total Vaccine Stock</div></div>
+        <div class="card text-black"><div class="v text-black">{{ $stats['inventory_on_hand'] }}</div><div class="l text-black">Vaccine Stock on Hand (current)</div></div>
         <div class="card text-black"><div class="v text-black">{{ $stats['new_inventory_received'] }}</div><div class="l text-black">New Stock Received</div></div>
-        <div class="card text-black"><div class="v text-black">{{ $stats['sms_sent'] }}</div><div class="l text-black">SMS Reminders Delivered</div></div>
+        <div class="card text-black"><div class="v text-black">{{ $stats['sms_delivered'] }}</div><div class="l text-black">SMS Reminders Delivered</div></div>
     </div>
 
     <table>
@@ -41,35 +41,39 @@
             <tr><td class="text-black">Vaccinations administered</td><td class="text-black">{{ $stats['vaccinations_administered'] }}</td></tr>
             <tr><td class="text-black">Missed appointments</td><td class="text-black">{{ $stats['missed_appointments'] }}</td></tr>
             <tr><td class="text-black">Overdue follow-ups (current)</td><td class="text-black">{{ $stats['overdue_followups'] }}</td></tr>
-            <tr><td class="text-black">Total vaccine stock on hand</td><td class="text-black">{{ $stats['inventory_used'] }}</td></tr>
+            <tr><td class="text-black">Vaccine stock on hand (current)</td><td class="text-black">{{ $stats['inventory_on_hand'] }}</td></tr>
             <tr><td class="text-black">New inventory received</td><td class="text-black">{{ $stats['new_inventory_received'] }}</td></tr>
-            <tr><td class="text-black">SMS reminders delivered</td><td class="text-black">{{ $stats['sms_sent'] }}</td></tr>
+            <tr><td class="text-black">SMS reminders delivered</td><td class="text-black">{{ $stats['sms_delivered'] }}</td></tr>
         </tbody>
     </table>
 
-    @if (!$topBarangays->isEmpty())
-        <h3 style="margin-top:20px;" class="text-black">Top Barangays (registrations)</h3>
-        <table>
-            <thead><tr><th class="text-black">Barangay</th><th class="text-black">Patients</th></tr></thead>
-            <tbody>
-                @foreach ($topBarangays as $brgy => $count)
-                    <tr><td class="text-black">{{ $brgy }}</td><td class="text-black">{{ $count }}</td></tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+    @foreach ([
+        'Patient Types' => 'patient_types', 'Top Barangays' => 'barangays',
+        'Exposure Categories' => 'exposure_categories', 'Animal Types' => 'animal_types',
+        'Queue Statuses' => 'ticket_statuses', 'Queue Service Stages' => 'ticket_stages',
+        'Vaccination Schedule Statuses' => 'schedule_statuses', 'Vaccine Types' => 'vaccine_types',
+        'SMS Delivery Statuses' => 'sms_statuses', 'Recorded Audit Actions' => 'audit_actions',
+        'Current Vaccine Stock by Type' => 'inventory_by_vaccine',
+    ] as $title => $key)
+        @if (!$analytics[$key]->isEmpty())
+            <h3 style="margin-top:20px;" class="text-black">{{ $title }}</h3>
+            <table>
+                <thead><tr><th class="text-black">Category</th><th class="text-black">Count / Quantity</th></tr></thead>
+                <tbody>
+                    @foreach ($analytics[$key] as $label => $count)
+                        <tr><td class="text-black">{{ ucfirst(str_replace('_', ' ', $label)) }}</td><td class="text-black">{{ $count }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    @endforeach
 
-    @if (!$exposureBreakdown->isEmpty())
-        <h3 style="margin-top:20px;" class="text-black">Exposure Category Breakdown</h3>
-        <table>
-            <thead><tr><th class="text-black">Category</th><th class="text-black">Incidents</th></tr></thead>
-            <tbody>
-                @foreach ($exposureBreakdown as $cat => $count)
-                     <tr><td class="text-black">{{ $cat }}</td><td class="text-black">{{ $count }}</td></tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
+    <h3 style="margin-top:20px;" class="text-black">Current Inventory Health</h3>
+    <table><tbody>
+        <tr><td class="text-black">Low-stock batches</td><td>{{ $analytics['low_stock_batches'] }}</td></tr>
+        <tr><td class="text-black">Batches expiring within 30 days</td><td>{{ $analytics['expiring_batches'] }}</td></tr>
+        <tr><td class="text-black">Expired batches</td><td>{{ $analytics['expired_batches'] }}</td></tr>
+    </tbody></table>
 
     <div class="footer text-black">Generated by N-VISION on {{ now()->format('F d, Y h:i A') }}. Confidential &mdash; for LGU Health Office / DOH submission.</div>
 </body>
