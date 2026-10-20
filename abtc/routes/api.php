@@ -57,7 +57,6 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
         Route::get('waiting', [QueueApiController::class, 'waiting']);
         Route::get('serving', [QueueApiController::class, 'serving']);
         Route::post('call-next', [QueueApiController::class, 'callNext']);
-        Route::post('schedules/{schedule}/queue', [QueueApiController::class, 'queueSchedule']);
         Route::post('call/{ticket}', [QueueApiController::class, 'callSpecific']);
         Route::post('serve/{ticket}', [QueueApiController::class, 'serve']);
         Route::post('hold/{ticket}', [QueueApiController::class, 'hold']);
@@ -65,11 +64,15 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
     });
     });
 
+    Route::middleware('role:Admin,Nurse')->group(function () {
+        Route::post('schedules/{schedule}/queue', [QueueApiController::class, 'queueSchedule']);
+        Route::post('schedules/{schedule}/administer', [ScheduleApiController::class, 'administer']);
+    });
+
     // Schedules
     Route::get('schedules', [ScheduleApiController::class, 'index']);
     Route::get('schedules/overdue', [ScheduleApiController::class, 'overdue']);
     Route::get('schedules/patient/{patient}', [ScheduleApiController::class, 'byPatient']);
-    Route::post('schedules/{schedule}/administer', [ScheduleApiController::class, 'administer']);
 
     // Inventory
     Route::get('inventory', [InventoryApiController::class, 'index']);

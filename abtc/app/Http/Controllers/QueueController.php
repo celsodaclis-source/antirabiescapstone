@@ -38,7 +38,7 @@ class QueueController extends Controller
         if (! $ticket) return back()->with('status', $message);
         Audit::log('queue.returning_patient', "Queued returning patient for dose {$schedule->dose_number} ({$ticket->ticket_number})", $ticket);
 
-        return redirect()->route('queue.index')->with('status', "Returning patient queued as {$ticket->ticket_number} for dose {$schedule->dose_number}.");
+        return redirect()->route('schedules.index')->with('status', "Returning patient queued as {$ticket->ticket_number} for dose {$schedule->dose_number}.");
     }
 
     public function index(): View

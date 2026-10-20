@@ -49,13 +49,18 @@
                                 <td class="px-4 py-3 text-center whitespace-nowrap text-black">{{ $s->administered_at?->format('M d, Y h:i A') ?? '—' }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex justify-end gap-1 whitespace-nowrap text-black">
-                                        <a href="{{ route('schedules.edit', $s) }}" class="text-xs bg-indigo-600 text-white px-2 py-2 rounded">Edit</a>
-                                        @if (auth()->user()->role !== 'Nurse' && in_array($s->status, ['scheduled', 'missed'], true) && $s->scheduled_date->lte(today()) && !$s->tickets->contains(fn ($ticket) => in_array($ticket->status, ['waiting', 'called', 'in_progress', 'held'], true)))
+                                        @if (auth()->user()->role === 'Doctor' || $s->status === 'administered')
+                                            <a href="{{ route('schedules.show', $s->patient) }}" class="text-xs bg-sky-700 text-white px-2 py-2 rounded">View</a>
+                                        @endif
+                                        @if (in_array(auth()->user()->role, ['Admin', 'Nurse'], true) && $s->status !== 'administered')
+                                            <a href="{{ route('schedules.edit', $s) }}" class="text-xs bg-indigo-600 text-white px-2 py-2 rounded">Edit</a>
+                                        @endif
+                                        @if (in_array(auth()->user()->role, ['Admin', 'Nurse'], true) && in_array($s->status, ['scheduled', 'missed'], true) && $s->scheduled_date->lte(today()) && !$s->tickets->contains(fn ($ticket) => in_array($ticket->status, ['waiting', 'called', 'in_progress', 'held'], true)))
                                             <form method="POST" action="{{ route('schedules.queue', $s) }}">@csrf
                                                 <button class="text-xs bg-violet-700 text-white px-2 py-2 rounded">Queue dose</button>
                                             </form>
                                         @endif
-                                        @if ($s->status !== 'administered')
+                                        @if (in_array(auth()->user()->role, ['Admin', 'Nurse'], true) && $s->status !== 'administered')
                                             <a href="{{ route('schedules.edit', $s) }}#administer" class="text-xs bg-green-600 text-white px-2 py-2 rounded">Administer</a>
                                         @endif
                                     </div>

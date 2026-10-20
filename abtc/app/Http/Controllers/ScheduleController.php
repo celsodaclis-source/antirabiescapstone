@@ -56,12 +56,14 @@ class ScheduleController extends Controller
 
     public function show(Patient $patient): View
     {
-        $patient->load(['vaccinationSchedules' => fn ($q) => $q->orderBy('dose_number'), 'biteIncidents']);
+        $patient->load(['vaccinationSchedules' => fn ($q) => $q->with(['administeredBy', 'inventory'])->orderBy('dose_number'), 'biteIncidents']);
         return view('schedules.show', compact('patient'));
     }
 
     public function edit(VaccinationSchedule $schedule): View
     {
+        abort_if($schedule->status === 'administered', 403, 'An administered dose cannot be edited.');
+
         $schedule->load('patient.biteIncidents');
         $batches = VaccineInventory::where('quantity', '>', 0)
             ->where('expiration_date', '>=', now()->toDateString())
@@ -77,6 +79,8 @@ class ScheduleController extends Controller
 
     public function update(Request $request, VaccinationSchedule $schedule): RedirectResponse
     {
+        abort_if($schedule->status === 'administered', 403, 'An administered dose cannot be edited.');
+
         $data = $request->validate([
             'scheduled_date' => ['required', 'date'],
             'status' => ['required', Rule::in($schedule->status === 'administered' ? ['administered'] : ['scheduled', 'missed'])],

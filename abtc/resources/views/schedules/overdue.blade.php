@@ -37,7 +37,10 @@
                                 <td class="px-4 py-3 text-center whitespace-nowrap text-black">{{ $s->scheduled_date->diffInDays(now()) }} days</td>
                                 <td class="px-4 py-3 text-center whitespace-nowrap text-black">{{ $s->patient->contact_number ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-right text-black">
-                                    <a href="{{ route('schedules.edit', $s) }}" class="inline-block rounded bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">Reschedule</a>
+                                    <a href="{{ route('schedules.show', $s->patient) }}" class="inline-block rounded bg-sky-700 px-3 py-2 text-xs font-semibold text-white">View</a>
+                                    @if (in_array(auth()->user()->role, ['Admin', 'Nurse'], true))
+                                        <a href="{{ route('schedules.edit', $s) }}" class="ml-1 inline-block rounded bg-indigo-600 px-3 py-2 text-xs font-semibold text-white">Reschedule</a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
