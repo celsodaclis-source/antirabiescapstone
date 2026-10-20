@@ -7,19 +7,14 @@ use App\Models\Patient;
 use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
 use App\Models\VaccineInventory;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class AbtcDemoDataSeeder extends Seeder
 {
     public function run(): void
     {
         mt_srand(20261019);
-
-        $this->seedMissingRoleAccounts();
 
         $stock = collect(['PVRV', 'PCECV'])->mapWithKeys(function (string $vaccine) {
             $batchNumber = 'DEMO-'.$vaccine.'-2026';
@@ -165,33 +160,6 @@ class AbtcDemoDataSeeder extends Seeder
 
         $this->command?->info("Added {$created} demo patients (150 maximum) and ensured 50 demo inventory batches. Existing records were preserved.");
         $this->command?->line('Demo-only records are marked in the patient address; no existing records were deleted or reset.');
-    }
-
-    private function seedMissingRoleAccounts(): void
-    {
-        foreach (User::roles() as $role) {
-            if (User::where('role', $role)->exists()) {
-                continue;
-            }
-
-            $emailPrefix = 'demo-'.Str::slug($role);
-            $email = $emailPrefix.'@abtc.local';
-            $suffix = 1;
-            while (User::where('email', $email)->exists()) {
-                $email = $emailPrefix.'-'.$suffix++.'@abtc.local';
-            }
-
-            $password = Str::random(24);
-            User::create([
-                'name' => 'Demo '.$role,
-                'email' => $email,
-                'email_verified_at' => now(),
-                'password' => Hash::make($password),
-                'role' => $role,
-            ]);
-
-            $this->command?->warn("Created missing {$role} demo account: {$email} (temporary password: {$password})");
-        }
     }
 
     private function randomItem(array $items): mixed
