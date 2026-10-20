@@ -7,13 +7,13 @@
         </div>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <a href="{{ route('staff.patients.create') }}" class="rounded-xl border border-slate-200 border-l-4 border-[#176b9c] bg-white p-5 shadow-sm hover:shadow-md">
+            <a href="{{ route('staff.patients.create') }}" class="rounded-xl border-2 border-[#176b9c] bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Patients Registered Today</p><p class="mt-1 text-3xl font-bold">{{ $patientsToday }}</p>
             </a>
-            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border border-slate-200 border-l-4 border-amber-400 bg-white p-5 shadow-sm hover:shadow-md">
+            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border-2 border-[#ffad00] bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Waiting Patients</p><p class="mt-1 text-3xl font-bold">{{ $waitingCount }}</p>
             </a>
-            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border border-slate-200 border-l-4 border-sky-500 bg-white p-5 shadow-sm hover:shadow-md">
+            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border-2 border-[#00a5e8] bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Currently Called or Serving</p><p class="mt-1 text-3xl font-bold">{{ $servingCount }}</p>
             </a>
         </div>
