@@ -52,6 +52,7 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
     Route::apiResource('patients', PatientApiController::class)->names('api.patients');
 
     // Queue management
+    Route::middleware('role:Admin,Doctor')->group(function () {
     Route::prefix('queue')->group(function () {
         Route::get('waiting', [QueueApiController::class, 'waiting']);
         Route::get('serving', [QueueApiController::class, 'serving']);
@@ -61,6 +62,7 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
         Route::post('serve/{ticket}', [QueueApiController::class, 'serve']);
         Route::post('hold/{ticket}', [QueueApiController::class, 'hold']);
         Route::post('complete/{ticket}', [QueueApiController::class, 'complete']);
+    });
     });
 
     // Schedules
@@ -78,8 +80,10 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
     Route::delete('inventory/{inventory}', [InventoryApiController::class, 'destroy']);
 
     // File Maintenance
+    Route::middleware('role:Admin,Doctor')->group(function () {
     Route::apiResource('files', FileMaintenanceApiController::class)->names('api.files');
     Route::get('files/categories', [FileMaintenanceApiController::class, 'categories']);
+    });
 
     // Reports
     Route::get('reports/summary', [ReportApiController::class, 'summary']);

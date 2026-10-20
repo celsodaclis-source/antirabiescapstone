@@ -18,15 +18,17 @@
                     <a href="{{ route('patients.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-[#176b9c] p-5 shadow-sm hover:shadow-md transition">
                         <div class="text-sm font-medium text-slate-600">Total Patients Today</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $patientsToday }}</div><div class="text-xs text-[#176b9c] mt-2">Registered today →</div>
                     </a>
-                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-amber-400 p-5 shadow-sm hover:shadow-md transition">
-                        <div class="text-sm font-medium text-slate-600">Waiting Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $waitingPatients }}</div><div class="text-xs text-[#176b9c] mt-2">Open queue →</div>
-                    </a>
-                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-sky-500 p-5 shadow-sm hover:shadow-md transition">
-                        <div class="text-sm font-medium text-slate-600">Currently Serving</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $currentlyServing }}</div><div class="text-xs text-[#176b9c] mt-2">View live queue →</div>
-                    </a>
-                    <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-emerald-500 p-5 shadow-sm hover:shadow-md transition">
-                        <div class="text-sm font-medium text-slate-600">Completed Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $completedPatients }}</div><div class="text-xs text-slate-500 mt-2">Completed today</div>
-                    </a>
+                    @if ($role !== 'Nurse')
+                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-amber-400 p-5 shadow-sm hover:shadow-md transition">
+                            <div class="text-sm font-medium text-slate-600">Waiting Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $waitingPatients }}</div><div class="text-xs text-[#176b9c] mt-2">Open queue →</div>
+                        </a>
+                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-sky-500 p-5 shadow-sm hover:shadow-md transition">
+                            <div class="text-sm font-medium text-slate-600">Currently Serving</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $currentlyServing }}</div><div class="text-xs text-[#176b9c] mt-2">View live queue →</div>
+                        </a>
+                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-emerald-500 p-5 shadow-sm hover:shadow-md transition">
+                            <div class="text-sm font-medium text-slate-600">Completed Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $completedPatients }}</div><div class="text-xs text-slate-500 mt-2">Completed today</div>
+                        </a>
+                    @endif
                     <a href="{{ route('schedules.index') }}" class="bg-white rounded-xl border border-slate-200 border-l-4 border-violet-500 p-5 shadow-sm hover:shadow-md transition">
                         <div class="text-sm font-medium text-slate-600">Upcoming Vaccinations</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $upcomingVaccinations }}</div><div class="text-xs text-slate-500 mt-2">Next 7 days</div>
                     </a>

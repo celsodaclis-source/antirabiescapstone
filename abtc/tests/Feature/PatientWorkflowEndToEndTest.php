@@ -52,29 +52,29 @@ class PatientWorkflowEndToEndTest extends TestCase
         $first = $this->registerPatient('First', 'regular');
         $second = $this->registerPatient('Second', 'regular');
 
-        $this->actingAs($this->nurse)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
         $first->refresh();
         $this->assertSame('called', $first->status);
 
-        $this->actingAs($this->nurse)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
         $this->assertSame('waiting', $second->fresh()->status);
 
-        $this->actingAs($this->nurse)->post(route('queue.hold', $first))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.hold', $first))->assertRedirect();
         $this->assertSame('held', $first->fresh()->status);
         $this->assertNull($first->fresh()->counter_assigned);
 
-        $this->actingAs($this->nurse)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call-next'), ['counter' => 1])->assertRedirect();
         $this->assertSame('called', $second->fresh()->status);
-        $this->actingAs($this->nurse)->post(route('queue.call', $first), ['counter' => 1])->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call', $first), ['counter' => 1])->assertRedirect();
         $this->assertSame('held', $first->fresh()->status, 'An occupied counter must reject a recall.');
 
-        $this->actingAs($this->nurse)->post(route('queue.complete', $second))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.complete', $second))->assertRedirect();
         $this->assertSame('completed', $second->fresh()->status);
-        $this->actingAs($this->nurse)->post(route('queue.call', $first), ['counter' => 1])->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call', $first), ['counter' => 1])->assertRedirect();
         $this->assertSame('called', $first->fresh()->status);
-        $this->actingAs($this->nurse)->post(route('queue.serve', $first))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.serve', $first))->assertRedirect();
         $this->assertSame('in_progress', $first->fresh()->status);
-        $this->actingAs($this->nurse)->post(route('queue.complete', $first))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.complete', $first))->assertRedirect();
         $this->assertSame('completed', $first->fresh()->status);
     }
 
@@ -97,19 +97,21 @@ class PatientWorkflowEndToEndTest extends TestCase
         ]);
 
         $this->actingAs($this->nurse)->get(route('schedules.index', ['filter' => 'missed']))
+            ->assertOk()->assertDontSee('Queue dose');
+        $this->actingAs($this->doctor)->get(route('schedules.index', ['filter' => 'missed']))
             ->assertOk()->assertSee('Queue dose');
-        $this->actingAs($this->nurse)->post(route('schedules.queue', $dose))->assertRedirect(route('queue.index'));
+        $this->actingAs($this->doctor)->post(route('schedules.queue', $dose))->assertRedirect(route('queue.index'));
         $ticket = Ticket::where('vaccination_schedule_id', $dose->id)->firstOrFail();
         $this->assertSame('returning', $ticket->visit_type);
         $this->assertSame('follow_up', $ticket->service_stage);
         $this->assertSame('waiting', $ticket->status);
-        $this->actingAs($this->nurse)->get(route('queue.index'))->assertOk()->assertSee('Dose 2');
-        $this->actingAs($this->nurse)->post(route('schedules.queue', $dose))->assertRedirect();
+        $this->actingAs($this->doctor)->get(route('queue.index'))->assertOk()->assertSee('Dose 2');
+        $this->actingAs($this->doctor)->post(route('schedules.queue', $dose))->assertRedirect();
         $this->assertSame(1, Ticket::where('vaccination_schedule_id', $dose->id)->count());
 
-        $this->actingAs($this->nurse)->post(route('queue.call-next'))->assertRedirect();
-        $this->actingAs($this->nurse)->post(route('queue.serve', $ticket))->assertRedirect();
-        $this->actingAs($this->nurse)->post(route('queue.complete', $ticket))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.call-next'))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.serve', $ticket))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('queue.complete', $ticket))->assertRedirect();
         $this->assertSame('in_progress', $ticket->fresh()->status, 'Dose-linked tickets cannot be marked done before administration.');
 
         $stockBefore = $this->batch->quantity;
@@ -127,7 +129,7 @@ class PatientWorkflowEndToEndTest extends TestCase
         $this->assertSame($this->batch->id, $dose->fresh()->inventory_id);
         $this->assertSame('completed', $ticket->fresh()->status);
         $this->assertNotNull($dose->fresh()->administered_at);
-        $this->actingAs($this->nurse)->get(route('patients.show', $patient))->assertOk()->assertSee('E2E-001');
+        $this->actingAs($this->doctor)->get(route('patients.show', $patient))->assertOk()->assertSee('E2E-001');
     }
 
     public function test_missed_dose_is_included_in_overdue_reminders_and_logged(): void
@@ -144,7 +146,7 @@ class PatientWorkflowEndToEndTest extends TestCase
             'scheduled_date' => now()->subDays(2)->toDateString(), 'status' => 'missed',
         ]);
 
-        $this->actingAs($this->nurse)->post(route('sms.send', $dose))->assertRedirect();
+        $this->actingAs($this->doctor)->post(route('sms.send', $dose))->assertRedirect();
         $this->assertDatabaseHas('sms_logs', ['patient_id' => $patient->id, 'recipient' => $patient->contact_number]);
         Http::assertSentCount(1);
     }

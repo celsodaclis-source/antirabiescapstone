@@ -21,6 +21,7 @@
     @php
         $isAdmin = Auth::user()->role === 'Admin';
         $isStaff = Auth::user()->role === 'Staff';
+        $isNurse = Auth::user()->role === 'Nurse';
         $homeRoute = $isStaff ? route('staff.dashboard') : route('dashboard');
     @endphp
     <div class="bg-[#142b49] text-slate-100">
@@ -55,12 +56,16 @@
                             ['staff.patients.search', 'Patient Search', 'staff.patients.search', 'users'],
                             ['staff.tickets.create', 'Create Ticket', 'staff.tickets.*', 'queue'],
                             ['staff.queue.index', 'Queue Management', 'staff.queue.*', 'queue'],
+                        ] : ($isNurse ? [
+                            ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['inventory.index', 'Inventory', 'inventory.*', 'inventory'], ['reports.index', 'Reports', 'reports.*', 'reports'],
+                            ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : [
                             ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
                             ['queue.index', 'Queue', 'queue.*', 'queue'], ['inventory.index', 'Inventory', 'inventory.*', 'inventory'],
                             ['reports.index', 'Reports', 'reports.*', 'reports'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                             ['sms.index', 'SMS', 'sms.*', 'message'], ['files.index', 'Files', 'files.*', 'file'],
-                        ];
+                        ]);
                     @endphp
                     @foreach ($navItems as [$routeName, $label, $activeRoute, $icon])
                         <a href="{{ route($routeName) }}" class="inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-4 text-xs font-semibold transition-colors sm:px-3 sm:text-sm {{ request()->routeIs($activeRoute) ? 'border-blue-600 bg-blue-50/70 text-blue-700' : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950' }}"><x-icon :name="$icon" class="h-4 w-4" />{{ $label }}</a>

@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/patients/export/csv', [PatientController::class, 'exportCsv'])->name('patients.export.csv');
 
     // Ticket Queue Management
+    Route::middleware('role:Admin,Doctor')->group(function () {
     Route::prefix('queue')->name('queue.')->group(function () {
         Route::get('/', [QueueController::class, 'index'])->name('index');
         Route::get('/data', [QueueController::class, 'data'])->name('data'); // polling endpoint
@@ -38,12 +39,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/complete/{ticket}', [QueueController::class, 'complete'])->name('complete');
         Route::post('/serve/{ticket}', [QueueController::class, 'serve'])->name('serve');
     });
+    });
 
     // Vaccination Scheduling & Dose Monitoring
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
         Route::get('/patient/{patient}', [ScheduleController::class, 'show'])->name('show');
-        Route::post('/{schedule}/queue', [QueueController::class, 'queueSchedule'])->name('queue');
+        Route::post('/{schedule}/queue', [QueueController::class, 'queueSchedule'])->middleware('role:Admin,Doctor')->name('queue');
         Route::get('/{schedule}/edit', [ScheduleController::class, 'edit'])->name('edit');
         Route::put('/{schedule}', [ScheduleController::class, 'update'])->name('update');
         Route::post('/{schedule}/administer', [ScheduleController::class, 'administer'])->name('administer');
@@ -61,9 +63,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // File Maintenance
+    Route::middleware('role:Admin,Doctor')->group(function () {
     Route::resource('files', FileMaintenanceController::class);
+    });
 
     // SMS Reminders
+    Route::middleware('role:Admin,Doctor')->group(function () {
     Route::prefix('sms')->name('sms.')->group(function () {
         Route::get('/', [SmsController::class, 'index'])->name('index');
         Route::get('/template', [SmsController::class, 'template'])->name('template');
@@ -74,6 +79,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/test-connection', [SmsController::class, 'testConnection'])->name('test-connection');
         Route::get('/settings', [SmsController::class, 'settings'])->name('settings');
         Route::post('/settings', [SmsController::class, 'updateSettings'])->name('settings.update');
+    });
     });
 
     // Reports

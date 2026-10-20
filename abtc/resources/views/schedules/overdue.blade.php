@@ -8,7 +8,9 @@
                 <a href="{{ route('schedules.index') }}" class="bg-gray-200 text-black px-4 py-2 rounded-md text-sm font-semibold hover:bg-gray-300 transition-colors border border-gray-300">&larr; Back</a>
                 <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-black flex-1">
                     The following patients are <strong class="text-black">overdue</strong> for a follow-up anti-rabies dose.
-                    Send reminders from the <a href="{{ route('sms.index') }}" class="underline text-black">SMS Reminders</a> module.
+                    @if (auth()->user()->role !== 'Nurse')
+                        Send reminders from the <a href="{{ route('sms.index') }}" class="underline text-black">SMS Reminders</a> module.
+                    @endif
                 </div>
             </div>
 

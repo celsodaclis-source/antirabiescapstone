@@ -141,6 +141,7 @@
                 </div>
             </div>
 
+            @if (auth()->user()->role !== 'Nurse')
             {{-- Queue Tickets --}}
             <div class="bg-white shadow rounded-xl border border-slate-200 p-5">
                 <h3 class="font-semibold text-black mb-3 flex items-center gap-2">
@@ -228,6 +229,7 @@
                     Present this card at ABTC for follow-up services. It records the registration and vaccination doses listed above.
                 </footer>
             </article>
+            @endif
         </div>
     </div>
 
