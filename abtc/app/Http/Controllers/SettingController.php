@@ -36,6 +36,12 @@ class SettingController extends Controller
         return view('settings.users-create', compact('roles'));
     }
 
+    public function editUser(User $user): View
+    {
+        $roles = User::roles();
+        return view('settings.users-edit', compact('user', 'roles'));
+    }
+
     public function storeUser(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -57,6 +63,45 @@ class SettingController extends Controller
         Audit::log('user.create', "Created user {$user->name} ({$user->role})", $user);
 
         return redirect()->route('settings.users')->with('status', "User {$user->name} created.");
+    }
+
+    public function updateUser(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email,'.$user->id],
+            'role' => ['required', 'in:'.implode(',', User::roles())],
+            'contact_number' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        if ($request->user()->is($user) && $data['role'] !== 'Admin') {
+            return back()->withErrors(['role' => 'You cannot remove Admin access from your own account.'])->withInput();
+        }
+
+        if ($user->role === 'Admin' && $data['role'] !== 'Admin' && User::where('role', 'Admin')->count() <= 1) {
+            return back()->withErrors(['role' => 'The system must retain at least one Admin account.'])->withInput();
+        }
+
+        $user->update($data);
+        Audit::log('user.update', "Updated user {$user->name} ({$user->role})", $user);
+
+        return redirect()->route('settings.users')->with('status', "User {$user->name} updated.");
+    }
+
+    public function destroyUser(Request $request, User $user): RedirectResponse
+    {
+        if ($request->user()->is($user)) {
+            return redirect()->route('settings.users')->withErrors(['user' => 'You cannot delete your own account.']);
+        }
+
+        if ($user->role === 'Admin' && User::where('role', 'Admin')->count() <= 1) {
+            return redirect()->route('settings.users')->withErrors(['user' => 'The system must retain at least one Admin account.']);
+        }
+
+        Audit::log('user.delete', "Deleted user {$user->name} ({$user->role})", $user);
+        $user->delete();
+
+        return redirect()->route('settings.users')->with('status', "User {$user->name} deleted.");
     }
 
     /** Reset a user's password. This route is protected by the Admin-only settings group. */

@@ -89,6 +89,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users', [SettingController::class, 'users'])->name('users');
         Route::get('/users/create', [SettingController::class, 'createUser'])->name('users.create');
         Route::post('/users', [SettingController::class, 'storeUser'])->name('users.store');
+        Route::get('/users/{user}/edit', [SettingController::class, 'editUser'])->name('users.edit');
+        Route::put('/users/{user}', [SettingController::class, 'updateUser'])->name('users.update');
+        Route::delete('/users/{user}', [SettingController::class, 'destroyUser'])->name('users.destroy');
         Route::put('/users/{user}/password', [SettingController::class, 'resetUserPassword'])->name('users.password.reset');
         Route::get('/audit', [SettingController::class, 'audit'])->name('audit');
         Route::post('/config', [SettingController::class, 'config'])->name('config');

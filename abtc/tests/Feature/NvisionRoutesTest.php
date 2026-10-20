@@ -102,6 +102,45 @@ class NvisionRoutesTest extends TestCase
         }
     }
 
+    public function test_admin_can_edit_and_delete_user_accounts_safely(): void
+    {
+        $admin = User::where('email', 'admin@abtc.gov.ph')->firstOrFail();
+        $target = User::factory()->create(['name' => 'Old Name', 'email' => 'old@example.com', 'role' => 'Staff']);
+
+        $this->actingAs($admin)->get(route('settings.users.edit', $target))
+            ->assertOk()
+            ->assertSee('Old Name');
+
+        $this->put(route('settings.users.update', $target), [
+            'name' => 'Updated Name', 'email' => 'updated@example.com',
+            'role' => 'Nurse', 'contact_number' => '09171234567',
+        ])->assertRedirect(route('settings.users'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id, 'name' => 'Updated Name',
+            'email' => 'updated@example.com', 'role' => 'Nurse',
+        ]);
+
+        $this->delete(route('settings.users.destroy', $target))
+            ->assertRedirect(route('settings.users'));
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
+
+        $this->delete(route('settings.users.destroy', $admin))
+            ->assertSessionHasErrors('user');
+        $this->assertDatabaseHas('users', ['id' => $admin->id, 'role' => 'Admin']);
+    }
+
+    public function test_admin_cannot_remove_the_last_admin_role(): void
+    {
+        $admin = User::where('email', 'admin@abtc.gov.ph')->firstOrFail();
+        $this->actingAs($admin)->put(route('settings.users.update', $admin), [
+            'name' => $admin->name, 'email' => $admin->email,
+            'role' => 'Nurse', 'contact_number' => $admin->contact_number,
+        ])->assertSessionHasErrors('role');
+
+        $this->assertSame('Admin', $admin->fresh()->role);
+    }
+
 public function test_dose_administer_deducts_inventory_atomically(): void
     {
         $doctor = User::where('role', 'Doctor')->first();
