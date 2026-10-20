@@ -24,63 +24,76 @@
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500 text-black">
                     <div class="text-sm text-black">Patients Registered</div>
                     <div class="text-3xl font-bold">{{ $stats['patients_registered'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">New patient records created during the selected period.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-green-500 text-black">
                     <div class="text-sm text-black">Patients Served</div>
                     <div class="text-3xl font-bold">{{ $stats['patients_served'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Queue tickets completed during the selected period.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-indigo-500 text-black">
                     <div class="text-sm text-black">Vaccinations Administered</div>
                     <div class="text-3xl font-bold">{{ $stats['vaccinations_administered'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Vaccine doses recorded as administered during the selected period.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-red-500 text-black">
                     <div class="text-sm text-black">Missed Appointments</div>
                     <div class="text-3xl font-bold">{{ $stats['missed_appointments'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Vaccination appointments marked missed in the selected period.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-yellow-500 text-black">
                     <div class="text-sm text-black">Overdue Follow-ups</div>
                     <div class="text-3xl font-bold">{{ $stats['overdue_followups'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Scheduled or missed doses with dates before today.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-purple-500 text-black">
                     <div class="text-sm text-black">Vaccine Stock on Hand</div>
                     <div class="text-3xl font-bold">{{ $stats['inventory_on_hand'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Current total quantity across all vaccine inventory batches.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-teal-500 text-black">
                     <div class="text-sm text-black">New Stock Received</div>
                     <div class="text-3xl font-bold">{{ $stats['new_inventory_received'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">Vaccine quantity received between the selected dates.</p>
                 </div>
                 <div class="bg-white rounded-lg shadow p-5 border-l-4 border-gray-500 text-black">
                     <div class="text-sm text-black">SMS Delivered</div>
                     <div class="text-3xl font-bold">{{ $stats['sms_delivered'] }}</div>
+                    <p class="mt-2 text-xs text-slate-500">SMS records marked delivered during the selected period.</p>
                 </div>
             </div>
 
             <div class="bg-white rounded-lg shadow p-5 text-black">
-                <h3 class="font-semibold text-black mb-3">Daily Registrations and Vaccinations</h3>
-                <canvas id="reportChart" height="100"></canvas>
+                <h3 class="font-semibold text-black mb-3">Daily System Activity</h3>
+                <p class="mb-3 text-sm text-slate-500">Daily patient registrations, administered doses, and delivered SMS messages during the selected period.</p>
+                <div class="relative h-72 w-full">
+                    <canvas id="reportChart"></canvas>
+                </div>
             </div>
 
             <section>
                 <h2 class="mb-4 text-lg font-semibold text-slate-800">Operational Analytics</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     @foreach ([
-                        ['patientTypeChart', 'Patient Type', $analytics['patient_types'], 'doughnut'],
-                        ['patientSexChart', 'Patient Sex', $analytics['patient_sex'], 'doughnut'],
-                        ['exposureChart', 'Exposure Category', $analytics['exposure_categories'], 'doughnut'],
-                        ['animalTypeChart', 'Animal Type', $analytics['animal_types'], 'bar'],
-                        ['queueChart', 'Queue Status', $analytics['ticket_statuses'], 'bar'],
-                        ['serviceStageChart', 'Queue Service Stage', $analytics['ticket_stages'], 'bar'],
-                        ['visitTypeChart', 'Visit Type', $analytics['visit_types'], 'doughnut'],
-                        ['scheduleChart', 'Vaccination Schedule Status', $analytics['schedule_statuses'], 'bar'],
-                        ['dosePlanChart', 'Provider-Ordered Dose Count', $analytics['planned_doses'], 'bar'],
-                        ['vaccineTypeChart', 'Prescribed Vaccine Type', $analytics['vaccine_types'], 'bar'],
-                        ['barangayChart', 'Top 10 Patient Barangays', $analytics['barangays'], 'bar'],
-                        ['vaccineStockChart', 'Current Vaccine Stock by Type', $analytics['inventory_by_vaccine'], 'bar'],
-                        ['smsChart', 'SMS Delivery Status', $analytics['sms_statuses'], 'doughnut'],
-                        ['auditChart', 'Recorded System Actions', $analytics['audit_actions'], 'bar'],
-                    ] as [$chartId, $chartTitle, $chartData, $chartType])
+                        ['patientTypeChart', 'Patient Type', 'Share of new registrations by priority or regular patient type.', $analytics['patient_types'], 'doughnut'],
+                        ['patientSexChart', 'Patient Sex', 'New registrations grouped by the sex recorded in the patient profile.', $analytics['patient_sex'], 'doughnut'],
+                        ['exposureChart', 'Exposure Category', 'Recorded bite incidents grouped by the doctor-assessed exposure category.', $analytics['exposure_categories'], 'doughnut'],
+                        ['animalTypeChart', 'Animal Type', 'Recorded bite incidents grouped by animal type.', $analytics['animal_types'], 'bar'],
+                        ['queueChart', 'Queue Status', 'Tickets created in this period grouped by their current recorded status.', $analytics['ticket_statuses'], 'bar'],
+                        ['serviceStageChart', 'Queue Service Stage', 'Tickets grouped by the workflow stage assigned at creation.', $analytics['ticket_stages'], 'bar'],
+                        ['visitTypeChart', 'Visit Type', 'Tickets grouped by new or returning visit type.', $analytics['visit_types'], 'doughnut'],
+                        ['scheduleChart', 'Vaccination Schedule Status', 'Doses with appointment dates in this period, grouped by status.', $analytics['schedule_statuses'], 'bar'],
+                        ['dosePlanChart', 'Provider-Ordered Dose Count', 'New patient records grouped by the prescribed number of doses.', $analytics['planned_doses'], 'bar'],
+                        ['vaccineTypeChart', 'Prescribed Vaccine Type', 'New patient records grouped by the vaccine type on their plan.', $analytics['vaccine_types'], 'bar'],
+                        ['barangayChart', 'Top 10 Patient Barangays', 'Barangays with the most patient registrations in this period.', $analytics['barangays'], 'bar'],
+                        ['vaccineStockChart', 'Current Vaccine Stock by Type', 'Current inventory quantity grouped by vaccine name; this is not period-limited.', $analytics['inventory_by_vaccine'], 'bar'],
+                        ['inventoryReceivedChart', 'Vaccine Stock Received by Date', 'Quantity of vaccine stock received on each date in the selected period.', $analytics['inventory_receipts_by_day'], 'bar'],
+                        ['smsChart', 'SMS Delivery Status', 'SMS records created in this period grouped by delivery status.', $analytics['sms_statuses'], 'doughnut'],
+                        ['auditChart', 'Recorded System Actions', 'Most frequent audit actions recorded during this period.', $analytics['audit_actions'], 'bar'],
+                    ] as [$chartId, $chartTitle, $chartDescription, $chartData, $chartType])
                         <div class="rounded-lg bg-white p-5 shadow text-black">
                             <h3 class="mb-3 font-semibold">{{ $chartTitle }}</h3>
+                            <p class="mb-3 min-h-10 text-sm text-slate-500">{{ $chartDescription }}</p>
                             @if ($chartData->isEmpty())
                                 <p class="flex h-56 items-center justify-center text-sm text-slate-500">No records available.</p>
                             @else
@@ -128,9 +141,9 @@
                 <section class="rounded-lg bg-white p-5 shadow text-black">
                     <h3 class="mb-4 font-semibold">Vaccine Inventory Health</h3>
                     <div class="mb-4 grid grid-cols-3 gap-3 text-center text-sm">
-                        <div class="rounded bg-amber-50 p-3"><strong class="block text-lg">{{ $analytics['low_stock_batches'] }}</strong>Low stock</div>
-                        <div class="rounded bg-orange-50 p-3"><strong class="block text-lg">{{ $analytics['expiring_batches'] }}</strong>Expiring in 30 days</div>
-                        <div class="rounded bg-red-50 p-3"><strong class="block text-lg">{{ $analytics['expired_batches'] }}</strong>Expired</div>
+                        <div class="rounded bg-amber-50 p-3"><strong class="block text-lg">{{ $analytics['low_stock_batches'] }}</strong>Low stock<p class="mt-1 text-xs text-slate-500">Batches at or below their reorder threshold.</p></div>
+                        <div class="rounded bg-orange-50 p-3"><strong class="block text-lg">{{ $analytics['expiring_batches'] }}</strong>Expiring in 30 days<p class="mt-1 text-xs text-slate-500">Batches nearing their expiration date.</p></div>
+                        <div class="rounded bg-red-50 p-3"><strong class="block text-lg">{{ $analytics['expired_batches'] }}</strong>Expired<p class="mt-1 text-xs text-slate-500">Batches past their expiration date.</p></div>
                     </div>
                     <h4 class="mb-2 text-sm font-medium text-slate-600">Current quantity by vaccine</h4>
                     @forelse ($analytics['inventory_by_vaccine'] as $vaccine => $quantity)
@@ -174,7 +187,7 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         indexAxis: horizontal ? 'y' : 'x',
-                        plugins: { legend: { display: isCircular, position: 'bottom' } },
+                        plugins: { legend: { display: isCircular || id === 'reportChart', position: 'bottom' } },
                         scales: isCircular ? {} : {
                             x: horizontal ? { beginAtZero: true, ticks: { precision: 0 } } : {},
                             y: horizontal ? {} : { beginAtZero: true, ticks: { precision: 0 } },
@@ -182,7 +195,10 @@
                     }
                 });
             };
-            renderChart('reportChart', 'line', @json($labels), @json($patientValues), false, [{ label: 'Vaccinations Administered', data: @json($vaccinationValues), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', fill: false, tension: 0.3 }]);
+            renderChart('reportChart', 'line', @json($labels), @json($patientValues), false, [
+                { label: 'Vaccinations Administered', data: @json($vaccinationValues), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', fill: false, tension: 0.3 },
+                { label: 'SMS Delivered', data: @json($smsValues), borderColor: '#0f766e', backgroundColor: 'rgba(15,118,110,0.08)', fill: false, tension: 0.3 }
+            ]);
             renderChart('patientTypeChart', 'doughnut', @json($analytics['patient_types']->keys()), @json($analytics['patient_types']->values()));
             renderChart('patientSexChart', 'doughnut', @json($analytics['patient_sex']->keys()), @json($analytics['patient_sex']->values()));
             renderChart('exposureChart', 'doughnut', @json($analytics['exposure_categories']->keys()), @json($analytics['exposure_categories']->values()));
@@ -194,7 +210,8 @@
             renderChart('dosePlanChart', 'bar', @json($analytics['planned_doses']->keys()), @json($analytics['planned_doses']->values()));
             renderChart('vaccineTypeChart', 'bar', @json($analytics['vaccine_types']->keys()), @json($analytics['vaccine_types']->values()), true);
             renderChart('barangayChart', 'bar', @json($analytics['barangays']->keys()), @json($analytics['barangays']->values()), true);
-            renderChart('vaccineStockChart', 'bar', @json($analytics['inventory_by_vaccine']->keys()), @json($analytics['inventory_by_vaccine']->values()));
+            renderChart('vaccineStockChart', 'bar', @json($analytics['inventory_by_vaccine']->keys()), @json($analytics['inventory_by_vaccine']->values()), true);
+            renderChart('inventoryReceivedChart', 'bar', @json($analytics['inventory_receipts_by_day']->keys()), @json($analytics['inventory_receipts_by_day']->values()));
             renderChart('smsChart', 'doughnut', @json($analytics['sms_statuses']->keys()), @json($analytics['sms_statuses']->values()));
             renderChart('auditChart', 'bar', @json($analytics['audit_actions']->keys()), @json($analytics['audit_actions']->values()), true);
         });
