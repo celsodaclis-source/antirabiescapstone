@@ -143,6 +143,7 @@
                                 <td class="px-4 py-3 text-black">{{ $p->created_at->format('M d, Y') }}</td>
                                 <td class="px-4 py-3 text-right flex items-center justify-end gap-2">
                                     <a href="{{ route('patients.show', $p) }}" class="font-semibold text-[#176b9c] hover:underline text-xs">View</a>
+                                    <a href="{{ route('patients.edit', $p) }}" class="font-semibold text-amber-700 hover:underline text-xs">Edit</a>
                                     <form method="POST" action="{{ route('patients.destroy', $p) }}" onsubmit="return confirm('Are you sure you want to delete {{ $p->fullName() }}? This cannot be undone.');" class="inline">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="font-semibold text-red-600 hover:underline text-xs">Delete</button>
@@ -176,6 +177,7 @@
                         </div>
                         <div class="mt-2 flex gap-2">
                             <a href="{{ route('patients.show', $p) }}" class="text-xs font-semibold text-[#176b9c] hover:underline">View</a>
+                            <a href="{{ route('patients.edit', $p) }}" class="text-xs font-semibold text-amber-700 hover:underline">Edit</a>
                             <form method="POST" action="{{ route('patients.destroy', $p) }}" onsubmit="return confirm('Delete {{ $p->fullName() }}? This cannot be undone.');" class="inline">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="text-xs font-semibold text-red-600 hover:underline">Delete</button>
