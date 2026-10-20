@@ -102,13 +102,22 @@ class ScheduleController extends Controller
             return back()->with('status', 'This dose was already administered.');
         }
 
-        $data = $request->validate([
-            'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes($schedule))],
-            'inventory_id' => ['required', 'exists:vaccine_inventory,id'],
-        ]);
+        $nurseUsesDoctorPlan = auth()->user()->role === 'Nurse';
+        if ($nurseUsesDoctorPlan) {
+            $vaccineType = $schedule->patient?->vaccine_type;
+            if (! $vaccineType || $this->isImmunoglobulin($vaccineType)) {
+                return back()->withErrors(['vaccine_type' => 'A valid doctor-ordered vaccine plan is required before administering this dose.']);
+            }
+            $data = ['vaccine_type' => $vaccineType];
+        } else {
+            $data = $request->validate([
+                'vaccine_type' => ['required', 'string', Rule::in($this->availableVaccineTypes($schedule))],
+                'inventory_id' => ['required', 'exists:vaccine_inventory,id'],
+            ]);
+        }
 
         // Atomically deduct inventory and record the dose.
-        return DB::transaction(function () use ($schedule, $data) {
+        return DB::transaction(function () use ($schedule, $data, $nurseUsesDoctorPlan) {
             $lockedSchedule = VaccinationSchedule::lockForUpdate()->findOrFail($schedule->id);
             if ($lockedSchedule->status === 'administered') {
                 return back()->with('status', 'This dose was already administered.');
@@ -122,11 +131,13 @@ class ScheduleController extends Controller
                 return back()->withErrors(['schedule' => 'Earlier doses must be administered first.'])->withInput();
             }
 
-            $batch = VaccineInventory::lockForUpdate()
+            $eligibleBatches = VaccineInventory::lockForUpdate()
                 ->where('vaccine_name', $data['vaccine_type'])
                 ->where('quantity', '>', 0)
-                ->where('expiration_date', '>=', now()->toDateString())
-                ->find($data['inventory_id']);
+                ->where('expiration_date', '>=', now()->toDateString());
+            $batch = $nurseUsesDoctorPlan
+                ? $eligibleBatches->orderBy('expiration_date')->orderBy('id')->first()
+                : $eligibleBatches->find($data['inventory_id']);
 
             if (! $batch || $this->isImmunoglobulin($batch->vaccine_name)) {
                 return back()->withErrors(['inventory_id' => 'Select an in-stock, unexpired batch matching the vaccine type.'])->withInput();

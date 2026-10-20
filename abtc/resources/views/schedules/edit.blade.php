@@ -59,14 +59,17 @@
                             <p>Animal status: {{ $biteIncident->animal_status ?? 'Unknown' }} &middot; Animal vaccinated: {{ $biteIncident->animal_vaccinated ? 'Yes' : 'No / unknown' }}</p>
                         </div>
                     @endif
-                    <p class="mb-4 text-sm text-black">Review the patient's exposure and vaccination history, then select the vaccine type ordered for this dose. This record does not contain prior rabies vaccination history.</p>
                     @if ($batches->isEmpty())
                         <p class="text-sm text-black">No eligible vaccine batches are in stock. Add an unexpired vaccine batch in Inventory first. Immunoglobulin products are not listed as vaccine types.</p>
                     @else
                         <form method="POST" action="{{ route('schedules.administer', $schedule) }}" onsubmit="return confirm('Confirm dose administration? Stock will be deducted from the selected batch.');">
                             @csrf
+                            @if ($errors->has('vaccine_type') || $errors->has('inventory_id'))
+                                <p class="mb-3 text-sm text-red-700">{{ $errors->first('vaccine_type') ?: $errors->first('inventory_id') }}</p>
+                            @endif
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
+                                @if (auth()->user()->role !== 'Nurse')
+                                    <div>
                                     <label for="vaccine_type" class="block text-sm font-medium text-black">Vaccine Type</label>
                                     <select id="vaccine_type" name="vaccine_type" required class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">
                                         <option value="">Select vaccine type</option>
@@ -75,8 +78,8 @@
                                         @endforeach
                                     </select>
                                     <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
-                                </div>
-                                <div>
+                                    </div>
+                                    <div>
                                     <label for="inventory_id" class="block text-sm font-medium text-black">Matching Vaccine Batch</label>
                                     <select id="inventory_id" name="inventory_id" data-old-value="{{ old('inventory_id') }}" required disabled class="block mt-1 w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100">
                                         <option value="">Select a vaccine type first</option>
@@ -87,7 +90,10 @@
                                         @endforeach
                                     </select>
                                     <x-input-error :messages="$errors->get('inventory_id')" class="mt-2" />
-                                </div>
+                                    </div>
+                                @else
+                                    <p class="sm:col-span-2 text-sm text-gray-700">The Doctor's saved vaccine plan will be used, and an eligible vaccine batch will be selected automatically.</p>
+                                @endif
                             </div>
                             <div class="flex justify-end mt-3 text-black">
                                 <button type="submit" class="bg-green-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-700">Mark Administered</button>
@@ -104,7 +110,7 @@
         </div>
     </div>
 
-    @if ($schedule->status !== 'administered' && $batches->isNotEmpty())
+    @if (auth()->user()->role !== 'Nurse' && $schedule->status !== 'administered' && $batches->isNotEmpty())
         @push('scripts')
         <script>
             window.addEventListener('DOMContentLoaded', () => {
