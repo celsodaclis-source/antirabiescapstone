@@ -33,11 +33,29 @@
             @if ($schedule->status !== 'administered')
                 <div id="administer" class="bg-white shadow rounded-lg p-5 border-l-4 border-green-500 text-black">
                     <h3 class="font-semibold text-black mb-3 text-black">Administer This Dose (auto-deducts stock)</h3>
-                    @php $biteIncident = $schedule->patient->biteIncidents->sortByDesc('date_of_bite')->first(); @endphp
+                    @php
+                        $patient = $schedule->patient;
+                        $biteIncident = $patient->biteIncidents->sortByDesc('date_of_bite')->first();
+                        $plannedDoseCount = (int) $patient->planned_dose_count;
+                        $plannedSchedule = $plannedDoseCount > 0
+                            ? collect(array_slice(\App\Models\VaccinationSchedule::DOSE_DAYS, 0, $plannedDoseCount))
+                                ->map(fn ($day) => 'Day ' . $day)
+                                ->implode(', ')
+                            : null;
+                    @endphp
+                    <div class="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-black">
+                        <p class="font-semibold">Doctor-Ordered Assessment and Vaccination Plan</p>
+                        <div class="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                            <p><span class="font-medium">Exposure Category:</span> {{ $biteIncident?->exposure_category ?: 'Not recorded' }}</p>
+                            <p><span class="font-medium">Vaccine Type:</span> {{ $patient->vaccine_type ?: 'Not recorded' }}</p>
+                            <p><span class="font-medium">Schedule:</span> {{ $plannedSchedule ?: 'Not recorded' }}</p>
+                            <p><span class="font-medium">Number of Doses in Provider-Ordered Schedule:</span> {{ $plannedDoseCount > 0 ? $plannedDoseCount . ' doses' : 'Not recorded' }}</p>
+                        </div>
+                    </div>
                     @if ($biteIncident)
                         <div class="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-black">
                             <p class="font-semibold">Exposure details for clinical review</p>
-                            <p>Animal: {{ $biteIncident->animal_type }} &middot; Exposure category: {{ $biteIncident->exposure_category }} &middot; Bite date: {{ $biteIncident->date_of_bite->format('M d, Y') }}</p>
+                            <p>Animal: {{ $biteIncident->animal_type }} &middot; Bite date: {{ $biteIncident->date_of_bite->format('M d, Y') }}</p>
                             <p>Animal status: {{ $biteIncident->animal_status ?? 'Unknown' }} &middot; Animal vaccinated: {{ $biteIncident->animal_vaccinated ? 'Yes' : 'No / unknown' }}</p>
                         </div>
                     @endif
@@ -53,7 +71,7 @@
                                     <select id="vaccine_type" name="vaccine_type" required class="block mt-1 w-full border-gray-300 rounded-md shadow-sm">
                                         <option value="">Select vaccine type</option>
                                         @foreach ($vaccineTypes as $type)
-                                            <option value="{{ $type }}" {{ old('vaccine_type') === $type ? 'selected' : '' }}>{{ $type }}</option>
+                                            <option value="{{ $type }}" {{ old('vaccine_type', $patient->vaccine_type) === $type ? 'selected' : '' }}>{{ $type }}</option>
                                         @endforeach
                                     </select>
                                     <x-input-error :messages="$errors->get('vaccine_type')" class="mt-2" />
