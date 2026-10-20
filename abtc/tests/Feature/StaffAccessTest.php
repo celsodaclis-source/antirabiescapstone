@@ -94,7 +94,17 @@ class StaffAccessTest extends TestCase
         $this->actingAs($this->staff)->get(route('staff.patients.create'))
             ->assertOk()
             ->assertDontSee('Vaccination Plan')
-            ->assertDontSee('Route for medical review');
+            ->assertDontSee('Route for medical review')
+            ->assertDontSee('Exposure Category')
+            ->assertDontSee('Generate Ticket')
+            ->assertDontSee('Generate a queue ticket before registering this patient.');
+
+        $admin = User::factory()->create(['role' => 'Admin']);
+        $this->actingAs($admin)->get(route('patients.create'))
+            ->assertOk()
+            ->assertSee('Exposure Category')
+            ->assertSee('Generate Ticket')
+            ->assertSee('Generate a queue ticket before registering this patient.');
 
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $this->actingAs($nurse)->get(route('patients.create'))
@@ -113,6 +123,18 @@ class StaffAccessTest extends TestCase
         $this->assertNull($patient->planned_dose_count);
         $this->assertSame(0, $patient->vaccinationSchedules()->count());
         $this->assertSame('assessment', $patient->tickets()->firstOrFail()->service_stage);
+    }
+
+    public function test_staff_can_register_patient_with_blank_exposure_category(): void
+    {
+        $data = $this->registrationData('Avery');
+        unset($data['exposure_category']);
+
+        $this->actingAs($this->staff)->post(route('staff.patients.store'), $data)->assertRedirect();
+
+        $patient = Patient::where('first_name', 'Avery')->firstOrFail();
+        $this->assertNull($patient->biteIncidents()->firstOrFail()->exposure_category);
+        $this->assertSame(1, $patient->tickets()->count());
     }
 
     public function test_doctor_can_record_vaccination_plan_for_staff_registered_patient(): void

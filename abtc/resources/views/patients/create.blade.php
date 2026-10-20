@@ -112,6 +112,7 @@
                         <x-text-input id="animal_type" name="animal_type" class="block mt-1 w-full" :value="old('animal_type')" placeholder="Dog, Cat, etc." required />
                         <x-input-error :messages="$errors->get('animal_type')" class="mt-2 text-rose-100 border-rose-200" />
                     </div>
+                    @unless ($isStaffUser)
                     <div>
                         <x-input-label for="exposure_category" value="Exposure Category" class="text-white" />
                         <select id="exposure_category" name="exposure_category" class="block mt-1 w-full rounded-lg border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-[#1976ba] focus:outline-none focus:ring-2 focus:ring-[#1976ba]/20">
@@ -122,6 +123,9 @@
                         </select>
                         <x-input-error :messages="$errors->get('exposure_category')" class="mt-2 text-rose-100 border-rose-200" />
                     </div>
+                    @else
+                    <input type="hidden" name="exposure_category" value="">
+                    @endunless
                     <div>
                         <x-input-label for="bite_site" value="Site of Bite" class="text-white" />
                         <x-text-input id="bite_site" name="bite_site" class="block mt-1 w-full" :value="old('bite_site')" placeholder="Right arm, leg, etc." />
@@ -186,7 +190,10 @@
                 </section>
                 @endif
 
-                {{-- Ticket generation is required before registration can be submitted. --}}
+                {{-- Staff tickets are created during registration; other roles confirm them here. --}}
+                @if ($isStaffUser)
+                    <input type="hidden" id="register_queue" name="register_queue" value="1">
+                @else
                 <div class="border-t pt-4" data-regular-ticket="{{ $nextRegularTicketNumber }}" data-priority-ticket="{{ $nextPriorityTicketNumber }}">
                     <input type="hidden" id="register_queue" name="register_queue" value="{{ old('register_queue') ? '1' : '' }}">
                     <div class="flex flex-wrap items-center gap-3">
@@ -199,6 +206,7 @@
                     </div>
                     <x-input-error :messages="$errors->get('register_queue')" class="mt-2" />
                 </div>
+                @endif
 
                 {{-- Actions --}}
                 <div class="flex justify-end gap-3">
@@ -234,43 +242,45 @@
             if (dob && dob.value) calcAge(dob);
 
             const form = document.querySelector('form[action="{{ $registrationAction }}"]');
-            const patientType = document.getElementById('patient_type');
-            const ticketFlag = document.getElementById('register_queue');
-            const generateTicketButton = document.getElementById('generate-ticket');
-            const ticketStatus = document.getElementById('ticket-generation-status');
             const registerPatientButton = document.getElementById('register-patient');
-            const ticketNumbers = generateTicketButton.closest('[data-regular-ticket]');
+            @unless ($isStaffUser)
+                const patientType = document.getElementById('patient_type');
+                const ticketFlag = document.getElementById('register_queue');
+                const generateTicketButton = document.getElementById('generate-ticket');
+                const ticketStatus = document.getElementById('ticket-generation-status');
+                const ticketNumbers = generateTicketButton.closest('[data-regular-ticket]');
 
-            const resetTicketGeneration = () => {
-                ticketFlag.value = '';
-                registerPatientButton.disabled = true;
-                ticketStatus.textContent = 'Generate a queue ticket before registering this patient.';
-            };
+                const resetTicketGeneration = () => {
+                    ticketFlag.value = '';
+                    registerPatientButton.disabled = true;
+                    ticketStatus.textContent = 'Generate a queue ticket before registering this patient.';
+                };
 
-            if (ticketFlag.value === '1') {
-                registerPatientButton.disabled = false;
-                ticketStatus.textContent = 'Ticket generation confirmed. Register the patient to create the ticket.';
-            }
-
-            generateTicketButton.addEventListener('click', () => {
-                const isPriority = patientType.value !== 'regular';
-                const ticketNumber = isPriority
-                    ? ticketNumbers.dataset.priorityTicket
-                    : ticketNumbers.dataset.regularTicket;
-
-                ticketFlag.value = '1';
-                registerPatientButton.disabled = false;
-                ticketStatus.textContent = `Ticket ${ticketNumber} is ready. Register the patient to save the record and ticket.`;
-            });
-
-            patientType.addEventListener('change', resetTicketGeneration);
-            form.addEventListener('submit', event => {
-                if (ticketFlag.value !== '1') {
-                    event.preventDefault();
-                    ticketStatus.textContent = 'Click Generate Ticket before registering this patient.';
-                    generateTicketButton.focus();
+                if (ticketFlag.value === '1') {
+                    registerPatientButton.disabled = false;
+                    ticketStatus.textContent = 'Ticket generation confirmed. Register the patient to create the ticket.';
                 }
-            });
+
+                generateTicketButton.addEventListener('click', () => {
+                    const isPriority = patientType.value !== 'regular';
+                    const ticketNumber = isPriority
+                        ? ticketNumbers.dataset.priorityTicket
+                        : ticketNumbers.dataset.regularTicket;
+
+                    ticketFlag.value = '1';
+                    registerPatientButton.disabled = false;
+                    ticketStatus.textContent = `Ticket ${ticketNumber} is ready. Register the patient to save the record and ticket.`;
+                });
+
+                patientType.addEventListener('change', resetTicketGeneration);
+                form.addEventListener('submit', event => {
+                    if (ticketFlag.value !== '1') {
+                        event.preventDefault();
+                        ticketStatus.textContent = 'Click Generate Ticket before registering this patient.';
+                        generateTicketButton.focus();
+                    }
+                });
+            @endunless
 
             document.getElementById('barangay').addEventListener('change', function() {
                 const address = document.getElementById('address');
