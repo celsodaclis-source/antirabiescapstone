@@ -61,14 +61,16 @@
                     @endif
                     </form>
                 </div>
-                <div class="flex gap-2">
-                    <a href="{{ route('patients.export.csv') }}?{{ http_build_query(request()->only(['search', 'barangay', 'patient_type'])) }}" class="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold text-sm hover:bg-emerald-700 text-center whitespace-nowrap">
-                        ⬇ Export CSV
-                    </a>
-                    <a href="{{ route('patients.create') }}" class="bg-[#176b9c] text-white px-5 py-2 rounded-md font-semibold text-sm hover:bg-[#11567f] text-center whitespace-nowrap">
-                        + Register New Patient
-                    </a>
-                </div>
+                @if (Auth::user()->role === 'Admin')
+                    <div class="flex gap-2">
+                        <a href="{{ route('patients.export.csv') }}?{{ http_build_query(request()->only(['search', 'barangay', 'patient_type'])) }}" class="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold text-sm hover:bg-emerald-700 text-center whitespace-nowrap">
+                            ⬇ Export CSV
+                        </a>
+                        <a href="{{ route('patients.create') }}" class="bg-[#176b9c] text-white px-5 py-2 rounded-md font-semibold text-sm hover:bg-[#11567f] text-center whitespace-nowrap">
+                            + Register New Patient
+                        </a>
+                    </div>
+                @endif
             </div>
 
             {{-- Desktop Table --}}

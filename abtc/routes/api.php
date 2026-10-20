@@ -48,7 +48,8 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
     Route::get('dashboard', [DashboardApiController::class, 'index']);
 
 // Patient management
-    Route::apiResource('patients', PatientApiController::class)->names('api.patients');
+    Route::apiResource('patients', PatientApiController::class)->except(['store'])->names('api.patients');
+    Route::post('patients', [PatientApiController::class, 'store'])->middleware('role:Admin')->name('api.patients.store');
 
     // Queue management
     Route::middleware('role:Admin,Doctor')->group(function () {

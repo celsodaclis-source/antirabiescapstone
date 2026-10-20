@@ -24,8 +24,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Patient Registration & Records
-    Route::resource('patients', PatientController::class);
-    Route::get('/patients/export/csv', [PatientController::class, 'exportCsv'])->name('patients.export.csv');
+    Route::resource('patients', PatientController::class)->except(['create', 'store']);
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('/patients/create', [PatientController::class, 'create'])->name('patients.create');
+        Route::post('/patients', [PatientController::class, 'store'])->name('patients.store');
+        Route::get('/patients/export/csv', [PatientController::class, 'exportCsv'])->name('patients.export.csv');
+    });
 
     // Ticket Queue Management
     Route::middleware('role:Admin,Doctor')->group(function () {
