@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\FileMaintenanceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PatientController;
@@ -60,11 +59,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{inventory}/edit', [InventoryController::class, 'edit'])->name('edit');
         Route::put('/{inventory}', [InventoryController::class, 'update'])->name('update');
         Route::delete('/{inventory}', [InventoryController::class, 'destroy'])->name('destroy');
-    });
-
-    // File Maintenance
-    Route::middleware('role:Admin,Doctor')->group(function () {
-    Route::resource('files', FileMaintenanceController::class);
     });
 
     // SMS Reminders

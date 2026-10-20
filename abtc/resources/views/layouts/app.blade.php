@@ -57,7 +57,7 @@
                             ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
                             ['queue.index', 'Queue', 'queue.*', 'queue'], ['inventory.index', 'Inventory', 'inventory.*', 'inventory'],
                             ['reports.index', 'Reports', 'reports.*', 'reports'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
-                            ['sms.index', 'SMS', 'sms.*', 'message'], ['files.index', 'Files', 'files.*', 'file'],
+                            ['sms.index', 'SMS', 'sms.*', 'message'],
                         ]);
                     @endphp
                     @foreach ($navItems as [$routeName, $label, $activeRoute, $icon])

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\FileMaintenanceApiController;
 use App\Http\Controllers\Api\PatientApiController;
 use App\Http\Controllers\Api\QueueApiController;
 use App\Http\Controllers\Api\ScheduleApiController;
@@ -78,12 +77,6 @@ Route::middleware(['auth:sanctum', 'role:Admin,Doctor,Nurse'])->group(function (
     Route::post('inventory', [InventoryApiController::class, 'store']);
     Route::put('inventory/{inventory}', [InventoryApiController::class, 'update']);
     Route::delete('inventory/{inventory}', [InventoryApiController::class, 'destroy']);
-
-    // File Maintenance
-    Route::middleware('role:Admin,Doctor')->group(function () {
-    Route::apiResource('files', FileMaintenanceApiController::class)->names('api.files');
-    Route::get('files/categories', [FileMaintenanceApiController::class, 'categories']);
-    });
 
     // Reports
     Route::get('reports/summary', [ReportApiController::class, 'summary']);
