@@ -16,6 +16,16 @@ class StaffAccessTest extends TestCase
 
     private User $staff;
 
+    public function test_administrative_staff_is_not_an_available_role(): void
+    {
+        $this->assertSame(['Admin', 'Doctor', 'Nurse', 'Staff'], User::roles());
+
+        $admin = User::factory()->create(['role' => 'Admin']);
+        $this->actingAs($admin)->get(route('settings.users.create'))
+            ->assertOk()
+            ->assertDontSee('Administrative Staff');
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

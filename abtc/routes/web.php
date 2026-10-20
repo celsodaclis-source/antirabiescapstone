@@ -21,7 +21,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::middleware('role:Admin,Doctor,Nurse,Administrative Staff')->group(function () {
+    Route::middleware('role:Admin,Doctor,Nurse')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Patient Registration & Records

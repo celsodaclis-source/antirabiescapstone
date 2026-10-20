@@ -2,9 +2,10 @@
     <x-slot name="header">Register New Patient</x-slot>
 
     @php
-        $isStaffUser = Auth::user()->role === 'Staff';
-        $isClinicalUser = in_array(Auth::user()->role, ['Doctor', 'Nurse'], true);
-        $canSelectExposureAtRegistration = in_array(Auth::user()->role, ['Admin', 'Administrative Staff'], true);
+        $registrationRole = strtolower(trim((string) Auth::user()->role));
+        $isStaffUser = $registrationRole === 'staff';
+        $isClinicalUser = in_array($registrationRole, ['doctor', 'nurse'], true);
+        $canSelectExposureAtRegistration = $registrationRole === 'admin';
         $registrationAction = $isStaffUser ? route('staff.patients.store') : route('patients.store');
         $cancelRoute = $isStaffUser ? route('staff.patients.search') : route('patients.index');
     @endphp

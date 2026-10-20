@@ -52,7 +52,7 @@ class User extends Authenticatable
 
     public static function roles(): array
     {
-        return ['Admin', 'Doctor', 'Nurse', 'Administrative Staff', 'Staff'];
+        return ['Admin', 'Doctor', 'Nurse', 'Staff'];
     }
 
     public function isAdmin(): bool

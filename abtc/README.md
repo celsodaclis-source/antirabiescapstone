@@ -30,7 +30,7 @@ Philippine Data Privacy Act of 2012 (RA 10173) accountability requirement.
 
 ## Roles
 
-`Admin/IT Support`, `Doctor`, `Nurse`, `Administrative Staff`.
+`Admin/IT Support`, `Doctor`, `Nurse`, `Staff`.
 Only `Admin/IT Support` can manage users and system settings; only
 `Admin/IT Support` and `Nurse` can manage inventory.
 
@@ -41,7 +41,7 @@ Only `Admin/IT Support` can manage users and system settings; only
 | Admin/IT Support | admin@abtc.gov.ph | password123 |
 | Doctor | doctor@abtc.gov.ph | password123 |
 | Nurse | nurse@abtc.gov.ph | password123 |
-| Administrative Staff | staff@abtc.gov.ph | password123 |
+| Staff | staff@abtc.gov.ph | password123 |
 
 ## Running locally (no MySQL required)
 
