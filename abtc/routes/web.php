@@ -13,6 +13,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\NurseStationController;
 use App\Http\Controllers\DoctorStationController;
+use App\Http\Controllers\DoctorConsultationController;
 use App\Http\Controllers\QueueMonitoringController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +52,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/data', [DoctorStationController::class, 'data'])->name('data');
         Route::post('/call-next', [DoctorStationController::class, 'callNext'])->name('call-next');
         Route::post('/tickets/{ticket}/complete', [DoctorStationController::class, 'complete'])->name('complete');
+        Route::get('/tickets/{ticket}/consultation', [DoctorConsultationController::class, 'form'])->name('consultation.form');
+        Route::post('/tickets/{ticket}/consultation/draft', [DoctorConsultationController::class, 'saveDraft'])->name('consultation.draft');
+        Route::post('/tickets/{ticket}/consultation/review', [DoctorConsultationController::class, 'review'])->name('consultation.review');
+        Route::get('/tickets/{ticket}/consultation/review', [DoctorConsultationController::class, 'reviewPage'])->name('consultation.review-page');
+        Route::post('/tickets/{ticket}/consultation/finalize', [DoctorConsultationController::class, 'finalize'])->name('consultation.finalize');
     });
 
     // Patient Registration & Records

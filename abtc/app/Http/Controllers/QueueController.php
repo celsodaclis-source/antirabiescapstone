@@ -262,13 +262,20 @@ class QueueController extends Controller
 
     public function hold(Ticket $ticket): RedirectResponse
     {
+        if (auth()->user()->role === 'Doctor') {
+            $station = DoctorStation::where('user_id', auth()->id())->first();
+            $stationMatches = $station && $ticket->assigned_staff_id === auth()->id()
+                && ($ticket->doctor_station_id === $station->id
+                    || ($ticket->doctor_station_id === null && $ticket->counter_assigned === $station->id));
+            abort_unless($stationMatches, 403, 'This ticket is not assigned to your active doctor station.');
+            if ($ticket->status !== 'in_progress') {
+                return back()->withErrors(['ticket' => 'Start the consultation before choosing an On Hold disposition.']);
+            }
+            return redirect()->route('doctor.station.consultation.form', $ticket)
+                ->with('status', 'Choose On Hold in the consultation form and confirm the disposition.');
+        }
         if (! in_array($ticket->status, ['waiting', 'called', 'in_progress'])) {
             return back()->with('status', 'Ticket cannot be held.');
-        }
-        if (auth()->user()->role === 'Doctor'
-            && ($ticket->assigned_staff_id !== auth()->id() || ! $ticket->doctor_station_id
-                || ! DoctorStation::where('id', $ticket->doctor_station_id)->where('user_id', auth()->id())->exists())) {
-            return back()->withErrors(['ticket' => 'This ticket is not assigned to your active doctor station.']);
         }
 
         $ticket->update([
@@ -285,6 +292,18 @@ class QueueController extends Controller
 
     public function complete(Ticket $ticket): RedirectResponse
     {
+        if (auth()->user()->role === 'Doctor') {
+            $station = DoctorStation::where('user_id', auth()->id())->first();
+            $stationMatches = $station && $ticket->assigned_staff_id === auth()->id()
+                && ($ticket->doctor_station_id === $station->id
+                    || ($ticket->doctor_station_id === null && $ticket->counter_assigned === $station->id));
+            abort_unless($stationMatches, 403, 'This ticket is not assigned to your active doctor station.');
+            if ($ticket->status !== 'in_progress') {
+                return back()->withErrors(['ticket' => 'Start the consultation before completing or routing the patient.']);
+            }
+            return redirect()->route('doctor.station.consultation.form', $ticket)
+                ->with('status', 'Complete the consultation form and confirm its disposition before changing the queue.');
+        }
         $doctor = auth()->user()->role === 'Doctor';
         $message = DB::transaction(function () use ($ticket, $doctor) {
             $station = $doctor ? DoctorStation::where('user_id', auth()->id())->lockForUpdate()->first() : null;

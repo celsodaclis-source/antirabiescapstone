@@ -98,14 +98,10 @@
                 @if ($currentTicket->status === 'called')
                     <form method="POST" action="{{ route('queue.serve', $currentTicket) }}" class="mt-5">@csrf<button class="w-full rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">Start Consultation</button></form>
                 @elseif ($currentTicket->status === 'in_progress')
-                    <form method="POST" action="{{ route('doctor.station.complete', $currentTicket) }}" class="mt-5">
-                        @csrf
-                        <button @disabled(! $planReady) class="flex w-full items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold text-white {{ $planReady ? 'bg-slate-950 hover:bg-slate-800' : 'cursor-not-allowed bg-slate-400' }}">
+                    <a href="{{ route('doctor.station.consultation.form', $currentTicket) }}" class="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 2.5 2.5L16 9"/></svg>
-                            Complete Consultation
-                        </button>
-                        @if (! $planReady)<p class="mt-2 text-center text-xs text-amber-800">Record the required exposure assessment and provider-ordered vaccination plan before completing this consultation.</p>@endif
-                    </form>
+                            Open Doctor Consultation Form
+                    </a>
                 @endif
             @else
                 <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center">

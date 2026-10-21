@@ -60,6 +60,11 @@ class Ticket extends Model
         return $this->belongsTo(VaccinationSchedule::class);
     }
 
+    public function consultation()
+    {
+        return $this->hasOne(Consultation::class);
+    }
+
     public function statusColor(): string
     {
         return match ($this->status) {

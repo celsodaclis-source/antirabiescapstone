@@ -19,6 +19,8 @@ class DoctorStationWorkflowTest extends TestCase
 
     public function test_nurse_assessment_queues_patient_for_doctor_and_consultation_completion_keeps_doses_scheduled(): void
     {
+        config()->set('vaccination.doctor_treatment_decisions', ['Rabies vaccination']);
+        config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $doctor = User::factory()->create(['role' => 'Doctor']);
         $admin = User::factory()->create(['role' => 'Admin']);
@@ -95,11 +97,34 @@ class DoctorStationWorkflowTest extends TestCase
             'exposure_category' => 'II', 'schedule' => 'days_0_3_7', 'vaccine_type' => 'PVRV', 'planned_dose_count' => 3,
         ])->assertRedirect(route('patients.show', $patient));
 
-        $this->post(route('doctor.station.complete', $ticket))->assertRedirect()->assertSessionHas('status');
+        $this->post(route('doctor.station.consultation.draft', $ticket), [
+            'clinical_narrative' => 'Documented exposure history and assessment findings.',
+            'exposure_category' => 'II', 'treatment_decision' => 'Rabies vaccination',
+            'vaccine_type' => 'PVRV', 'schedule_code' => 'days_0_3_7',
+            'planned_dose_count' => 3, 'vaccination_schedule' => 'Day 0, Day 3, Day 7',
+            'additional_instructions' => 'Return for scheduled doses.', 'disposition' => 'complete_visit',
+            'disposition_remarks' => 'No further on-site service today.',
+        ])->assertRedirect()->assertSessionHas('status');
+        $this->post(route('doctor.station.consultation.review', $ticket), [
+            'clinical_narrative' => 'Documented exposure history and assessment findings.',
+            'exposure_category' => 'II', 'treatment_decision' => 'Rabies vaccination',
+            'vaccine_type' => 'PVRV', 'schedule_code' => 'days_0_3_7',
+            'planned_dose_count' => 3, 'vaccination_schedule' => 'Day 0, Day 3, Day 7',
+            'additional_instructions' => 'Return for scheduled doses.', 'disposition' => 'complete_visit',
+            'disposition_remarks' => 'No further on-site service today.',
+        ])->assertRedirect(route('doctor.station.consultation.review-page', $ticket));
+        $this->get(route('doctor.station.consultation.review-page', $ticket))->assertOk()->assertSee('Review Consultation');
+        $this->post(route('doctor.station.consultation.finalize', $ticket), ['confirmed' => '1'])
+            ->assertRedirect(route('doctor.station.show'))->assertSessionHas('status');
         $this->assertDatabaseHas('tickets', [
             'id' => $ticket->id, 'status' => 'completed', 'assigned_staff_id' => $doctor->id,
         ]);
+        $this->assertDatabaseHas('consultations', [
+            'ticket_id' => $ticket->id, 'doctor_id' => $doctor->id, 'status' => 'completed',
+            'clinical_narrative' => 'Documented exposure history and assessment findings.',
+        ]);
         $this->assertSame(3, VaccinationSchedule::where('patient_id', $patient->id)->where('status', 'scheduled')->count());
+        $this->assertSame(0, VaccinationSchedule::where('patient_id', $patient->id)->where('status', 'administered')->count());
         $this->assertSame(1, Ticket::where('patient_id', $patient->id)->count(), 'The original ticket is reused through nurse transfer and consultation.');
         $this->post(route('doctor.station.complete', $ticket))->assertSessionHasErrors('consultation');
         $this->get(route('doctor.station.show'))->assertOk()->assertSee('Patients Consulted Today')->assertSee('No patients are currently waiting for a doctor.');

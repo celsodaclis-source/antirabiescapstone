@@ -224,50 +224,11 @@ class DoctorStationController extends Controller
 
     public function complete(Ticket $ticket): RedirectResponse
     {
-        $doctor = request()->user();
-
-        try {
-            DB::transaction(function () use ($ticket, $doctor) {
-                $station = DoctorStation::where('user_id', $doctor->id)->lockForUpdate()->first();
-                if (! $station) {
-                    throw ValidationException::withMessages(['consultation' => 'You must be assigned to a doctor station to complete a consultation.']);
-                }
-
-                $lockedTicket = Ticket::with(['patient.biteIncidents', 'patient.vaccinationSchedules'])
-                    ->lockForUpdate()->findOrFail($ticket->id);
-                if ($lockedTicket->status === 'completed') {
-                    throw ValidationException::withMessages(['consultation' => 'This consultation has already been completed.']);
-                }
-                $stationMatches = $lockedTicket->doctor_station_id === $station->id
-                    || ($lockedTicket->doctor_station_id === null && $lockedTicket->counter_assigned === $station->id);
-                if ($lockedTicket->status !== 'in_progress' || $lockedTicket->assigned_staff_id !== $doctor->id || ! $stationMatches) {
-                    throw ValidationException::withMessages(['consultation' => 'This patient is not assigned to your active station.']);
-                }
-                if ($lockedTicket->service_stage !== 'follow_up' && ! $lockedTicket->assessment_completed_at) {
-                    throw ValidationException::withMessages(['consultation' => 'A nurse must complete the patient assessment before this consultation can be completed.']);
-                }
-                if ($lockedTicket->vaccination_schedule_id && $lockedTicket->vaccinationSchedule?->status !== 'administered') {
-                    throw ValidationException::withMessages(['consultation' => 'The linked vaccination dose must be administered before its follow-up ticket can be completed.']);
-                }
-
-                $patient = $lockedTicket->patient;
-                $incident = $patient?->biteIncidents->sortBy('date_of_bite')->first();
-                $doseCount = (int) $patient?->planned_dose_count;
-                if (! $incident?->exposure_category || ! $patient?->vaccine_type || ! in_array($doseCount, [3, 4], true)
-                    || $patient->vaccinationSchedules->count() !== $doseCount) {
-                    throw ValidationException::withMessages([
-                        'consultation' => 'Complete the patient Exposure Category, Vaccine Type, provider-ordered Schedule, and dose count before completing this consultation.',
-                    ]);
-                }
-
-                $lockedTicket->update(['status' => 'completed', 'completed_at' => now()]);
-                Audit::log('doctor.consultation.complete', "Doctor completed consultation for ticket {$lockedTicket->ticket_number}", $lockedTicket);
-            });
-        } catch (ValidationException $exception) {
-            return back()->withErrors($exception->errors());
+        if ($ticket->status !== 'in_progress') {
+            return back()->withErrors(['consultation' => 'Start the consultation before opening its finalization form.']);
         }
-
-        return back()->with('status', "Consultation for {$ticket->ticket_number} completed. Vaccination doses remain scheduled until administered.");
+        return redirect()->route('doctor.station.consultation.form', $ticket)
+            ->withErrors(['consultation' => 'Complete the consultation form and confirm its disposition before changing the queue.']);
     }
 
     public function release(): RedirectResponse

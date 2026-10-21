@@ -197,6 +197,9 @@ class QueueApiController extends Controller
 
     public function hold(Ticket $ticket): JsonResponse
     {
+        if (auth()->user()->role === 'Doctor') {
+            return response()->json(['message' => 'Doctors must record On Hold through the consultation form disposition.'], 409);
+        }
         if (!in_array($ticket->status, ['waiting', 'called', 'in_progress'])) {
             return response()->json(['message' => 'Ticket cannot be held.'], 422);
         }
@@ -214,6 +217,9 @@ class QueueApiController extends Controller
 
     public function complete(Ticket $ticket): JsonResponse
     {
+        if (auth()->user()->role === 'Doctor') {
+            return response()->json(['message' => 'Doctors must complete and confirm the consultation form before changing this ticket.'], 409);
+        }
         if (!in_array($ticket->status, ['called', 'in_progress'], true)) {
             return response()->json(['message' => 'Only a called or currently serving ticket can be completed.'], 422);
         }
