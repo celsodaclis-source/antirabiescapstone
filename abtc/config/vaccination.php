@@ -9,9 +9,4 @@ return [
     ))),
     // JSON map of doctor-order vaccine names to clinic-approved routes.
     'administration_routes' => json_decode((string) env('VACCINE_ADMINISTRATION_ROUTES', '{}'), true) ?: [],
-    // Comma-separated locally approved doctor treatment decisions; deliberately empty until configured.
-    'doctor_treatment_decisions' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', (string) env('DOCTOR_TREATMENT_DECISIONS', ''))
-    ))),
 ];

@@ -10,7 +10,6 @@
             <div><h2 class="font-semibold text-slate-900">Clinical assessment</h2><p class="mt-1 whitespace-pre-wrap text-sm text-slate-700">{{ $consultation->clinical_narrative ?: 'Not entered' }}</p></div>
             <dl class="grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-xs text-slate-500">Exposure category</dt><dd>{{ $consultation->exposure_category ?: 'Not selected' }}</dd></div>
-                <div><dt class="text-xs text-slate-500">Treatment decision</dt><dd>{{ $consultation->treatment_decision ?: 'Not selected' }}</dd></div>
                 <div><dt class="text-xs text-slate-500">Vaccine / treatment</dt><dd>{{ $consultation->vaccine_type ?: 'Not selected' }}</dd></div>
                 <div><dt class="text-xs text-slate-500">Regimen / route</dt><dd>{{ $consultation->regimen_route ?: 'Not configured' }}</dd></div>
                 <div><dt class="text-xs text-slate-500">Provider-ordered schedule</dt><dd>{{ $consultation->vaccination_schedule ?: 'Not selected' }} @if($consultation->planned_dose_count) · {{ $consultation->planned_dose_count }} doses @endif</dd></div>

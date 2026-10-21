@@ -40,7 +40,6 @@ class DoctorConsultationController extends Controller
                     3 => 'days_0_3_7', 4 => 'days_0_3_7_28', default => null,
                 },
             ],
-            'treatmentDecisions' => config('vaccination.doctor_treatment_decisions', []),
             'routes' => config('vaccination.administration_routes', []),
             'scheduleOptions' => $this->scheduleOptions(),
         ]);
@@ -176,11 +175,9 @@ class DoctorConsultationController extends Controller
     private function draftRules(): array
     {
         $vaccineTypes = $this->availableVaccineTypes();
-        $decisions = config('vaccination.doctor_treatment_decisions', []);
         return [
             'clinical_narrative' => ['nullable', 'string', 'max:10000'],
             'exposure_category' => ['nullable', Rule::in(['I', 'II', 'III'])],
-            'treatment_decision' => ['nullable', Rule::in($decisions)],
             'vaccine_type' => ['nullable', Rule::in($vaccineTypes)],
             'schedule_code' => ['nullable', Rule::in(array_keys(self::SCHEDULES))],
             'vaccination_schedule' => ['nullable', 'string', 'max:500'],
@@ -217,9 +214,6 @@ class DoctorConsultationController extends Controller
         $errors = [];
         if (! filled($consultation->clinical_narrative)) $errors['clinical_narrative'] = 'Enter the clinical assessment and findings.';
         if (! in_array($consultation->exposure_category, ['I', 'II', 'III'], true)) $errors['exposure_category'] = 'Select an approved exposure category.';
-        $decisions = config('vaccination.doctor_treatment_decisions', []);
-        if (! $decisions) $errors['treatment_decision'] = 'Configure the clinic-approved treatment decisions before finalizing consultations.';
-        elseif (! in_array($consultation->treatment_decision, $decisions, true)) $errors['treatment_decision'] = 'Select a clinic-approved treatment decision.';
         if (! in_array($consultation->disposition, self::DISPOSITIONS, true)) $errors['disposition'] = 'Choose one supported patient disposition.';
         if (in_array($consultation->disposition, ['route_to_nurse', 'on_hold', 'refer'], true)
             && ! filled($consultation->disposition_remarks)) {

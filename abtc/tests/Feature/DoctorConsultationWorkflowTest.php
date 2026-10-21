@@ -41,7 +41,6 @@ class DoctorConsultationWorkflowTest extends TestCase
     public function test_finalization_requires_clinic_decision_and_narrative_and_routes_original_ticket_to_nurse(): void
     {
         [$doctor, $ticket] = $this->activeConsultation(true);
-        config()->set('vaccination.doctor_treatment_decisions', ['Rabies vaccination']);
         config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         config()->set('vaccination.administration_sites', ['Left deltoid']);
         VaccineInventory::create([
@@ -75,13 +74,11 @@ class DoctorConsultationWorkflowTest extends TestCase
     public function test_complete_visit_does_not_create_an_administered_dose_and_duplicate_finalize_is_rejected(): void
     {
         [$doctor, $ticket] = $this->activeConsultation();
-        config()->set('vaccination.doctor_treatment_decisions', ['No vaccine indicated']);
         $payload = $this->consultationPayload('complete_visit');
         $payload['vaccine_type'] = '';
         $payload['schedule_code'] = '';
         $payload['planned_dose_count'] = '';
         $payload['vaccination_schedule'] = '';
-        $payload['treatment_decision'] = 'No vaccine indicated';
 
         $this->actingAs($doctor)->post(route('doctor.station.consultation.review', $ticket), $payload)
             ->assertRedirect(route('doctor.station.consultation.review-page', $ticket));
@@ -111,7 +108,6 @@ class DoctorConsultationWorkflowTest extends TestCase
 
     public function test_on_hold_and_referral_dispositions_remain_visible_as_held_work(): void
     {
-        config()->set('vaccination.doctor_treatment_decisions', ['Rabies vaccination']);
         config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         VaccineInventory::create([
             'batch_number' => 'HOLD-1', 'vaccine_name' => 'PVRV', 'quantity' => 10,
@@ -168,7 +164,7 @@ class DoctorConsultationWorkflowTest extends TestCase
     {
         return [
             'clinical_narrative' => 'Exposure and relevant clinical findings documented.',
-            'exposure_category' => 'II', 'treatment_decision' => 'Rabies vaccination',
+            'exposure_category' => 'II',
             'vaccine_type' => 'PVRV', 'schedule_code' => 'days_0_3_7',
             'planned_dose_count' => 3, 'vaccination_schedule' => 'Day 0, Day 3, Day 7',
             'additional_instructions' => 'Follow the ordered schedule.',

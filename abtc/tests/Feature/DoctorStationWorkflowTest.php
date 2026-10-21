@@ -19,7 +19,6 @@ class DoctorStationWorkflowTest extends TestCase
 
     public function test_nurse_assessment_queues_patient_for_doctor_and_consultation_completion_keeps_doses_scheduled(): void
     {
-        config()->set('vaccination.doctor_treatment_decisions', ['Rabies vaccination']);
         config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $doctor = User::factory()->create(['role' => 'Doctor']);
@@ -99,7 +98,7 @@ class DoctorStationWorkflowTest extends TestCase
 
         $this->post(route('doctor.station.consultation.draft', $ticket), [
             'clinical_narrative' => 'Documented exposure history and assessment findings.',
-            'exposure_category' => 'II', 'treatment_decision' => 'Rabies vaccination',
+            'exposure_category' => 'II',
             'vaccine_type' => 'PVRV', 'schedule_code' => 'days_0_3_7',
             'planned_dose_count' => 3, 'vaccination_schedule' => 'Day 0, Day 3, Day 7',
             'additional_instructions' => 'Return for scheduled doses.', 'disposition' => 'complete_visit',
@@ -107,7 +106,7 @@ class DoctorStationWorkflowTest extends TestCase
         ])->assertRedirect()->assertSessionHas('status');
         $this->post(route('doctor.station.consultation.review', $ticket), [
             'clinical_narrative' => 'Documented exposure history and assessment findings.',
-            'exposure_category' => 'II', 'treatment_decision' => 'Rabies vaccination',
+            'exposure_category' => 'II',
             'vaccine_type' => 'PVRV', 'schedule_code' => 'days_0_3_7',
             'planned_dose_count' => 3, 'vaccination_schedule' => 'Day 0, Day 3, Day 7',
             'additional_instructions' => 'Return for scheduled doses.', 'disposition' => 'complete_visit',

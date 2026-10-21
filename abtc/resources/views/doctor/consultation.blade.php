@@ -65,12 +65,6 @@
                         @error('exposure_category')<p class="mt-1 text-sm text-rose-700">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label for="treatment_decision" class="block text-sm font-medium text-slate-700">Treatment Decision</label>
-                        <select id="treatment_decision" name="treatment_decision" class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm"><option value="">Select configured decision</option>@foreach ($treatmentDecisions as $decision)<option value="{{ $decision }}" @selected($value('treatment_decision') === $decision)>{{ $decision }}</option>@endforeach</select>
-                        @if (!$treatmentDecisions)<p class="mt-1 text-xs text-amber-800">Clinic-approved treatment decisions are not configured. An authorized administrator must configure them before finalization.</p>@endif
-                        @error('treatment_decision')<p class="mt-1 text-sm text-rose-700">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
                         <label for="vaccine_type" class="block text-sm font-medium text-slate-700">Vaccine / Treatment</label>
                         <select id="vaccine_type" name="vaccine_type" class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm"><option value="">Select available inventory item</option>@foreach ($vaccineTypes as $type)<option value="{{ $type }}" @selected($selectedVaccine === $type)>{{ $type }}</option>@endforeach</select>
                         @if (!$vaccineTypes)<p class="mt-1 text-xs text-amber-800">No unexpired vaccine with stock is available. The treatment decision must be reviewed before finalization.</p>@endif
