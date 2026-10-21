@@ -14,6 +14,7 @@ class VaccinationSchedule extends Model
     protected $fillable = [
         'patient_id', 'dose_number', 'scheduled_date', 'status',
         'administered_at', 'administered_by', 'inventory_id',
+        'administration_route', 'administration_site', 'administration_remarks',
     ];
 
     protected $casts = [

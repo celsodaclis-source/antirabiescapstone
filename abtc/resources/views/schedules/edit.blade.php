@@ -30,7 +30,11 @@
                 </form>
             </div>
 
-            @if ($schedule->status !== 'administered')
+            @if (auth()->user()->role === 'Nurse' && $schedule->status !== 'administered')
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-slate-800">
+                    Nurses record vaccine doses from their assigned <a class="font-semibold text-blue-800 underline" href="{{ route('nurse.station.show') }}">My Queue</a> after the due dose has been queued. This keeps the patient's ticket, station, administering nurse, batch, and observation record together.
+                </div>
+            @elseif ($schedule->status !== 'administered')
                 <div id="administer" class="bg-white shadow rounded-lg p-5 border-l-4 border-green-500 text-black">
                     <h3 class="font-semibold text-black mb-3 text-black">Administer This Dose (auto-deducts stock)</h3>
                     @php

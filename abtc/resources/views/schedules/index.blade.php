@@ -60,7 +60,7 @@
                                                 <button class="text-xs bg-violet-700 text-white px-2 py-2 rounded">Queue dose</button>
                                             </form>
                                         @endif
-                                        @if (in_array(auth()->user()->role, ['Admin', 'Nurse'], true) && $s->status !== 'administered')
+                                        @if (auth()->user()->role === 'Admin' && $s->status !== 'administered')
                                             <a href="{{ route('schedules.edit', $s) }}#administer" class="text-xs bg-green-600 text-white px-2 py-2 rounded">Administer</a>
                                         @endif
                                     </div>

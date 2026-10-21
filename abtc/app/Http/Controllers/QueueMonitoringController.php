@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DoctorStation;
 use App\Models\NurseStation;
 use App\Models\Ticket;
+use App\Models\VaccineInventory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
@@ -37,11 +38,29 @@ class QueueMonitoringController extends Controller
     {
         $assessmentStages = ['assessment', 'medical_review'];
         $activeStatuses = ['called', 'in_progress'];
+        $followUpTypes = [];
+        if (config('vaccination.administration_sites', [])) {
+            $followUpTypes = VaccineInventory::whereIn('vaccine_name', array_keys(config('vaccination.administration_routes', [])))
+                ->where('quantity', '>', 0)->whereDate('expiration_date', '>=', today())
+                ->pluck('vaccine_name')->unique()->values()->all();
+        }
 
         $nurseWaitingQuery = Ticket::query()
             ->where('status', 'waiting')
-            ->whereIn('service_stage', $assessmentStages)
-            ->whereNull('assessment_completed_at')
+            ->where(function ($query) use ($assessmentStages, $followUpTypes) {
+                $query->where(function ($assessment) use ($assessmentStages) {
+                    $assessment->whereIn('service_stage', $assessmentStages)->whereNull('assessment_completed_at');
+                })->orWhere(function ($followUp) use ($followUpTypes) {
+                    $followUp->where('service_stage', 'follow_up')
+                        ->whereHas('vaccinationSchedule', fn ($schedule) => $schedule
+                            ->whereIn('status', ['scheduled', 'missed'])->whereDate('scheduled_date', '<=', today())
+                            ->whereRaw("not exists (select 1 from vaccination_schedules earlier_dose where earlier_dose.patient_id = vaccination_schedules.patient_id and earlier_dose.dose_number < vaccination_schedules.dose_number and earlier_dose.status != 'administered')"))
+                        ->whereHas('patient', fn ($patient) => $patient->whereIn('vaccine_type', $followUpTypes)
+                            ->whereIn('planned_dose_count', [3, 4])
+                            ->whereHas('biteIncidents', fn ($incident) => $incident->whereNotNull('exposure_category'))
+                            ->whereRaw('(select count(*) from vaccination_schedules as planned_doses where planned_doses.patient_id = patients.id) = patients.planned_dose_count'));
+                });
+            })
             ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', $activeStatuses));
 
         $doctorWaitingQuery = Ticket::query()
@@ -50,7 +69,7 @@ class QueueMonitoringController extends Controller
                 $query->where(function ($assessment) use ($assessmentStages) {
                     $assessment->whereIn('service_stage', $assessmentStages)
                         ->whereNotNull('assessment_completed_at');
-                })->orWhere('service_stage', 'follow_up');
+                });
             })
             ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', $activeStatuses))
             ;
@@ -86,7 +105,7 @@ class QueueMonitoringController extends Controller
 
         $nurseActive = $activeTickets->filter(fn (Ticket $ticket) =>
             $ticket->assignedStaff?->role === 'Nurse'
-            && in_array($ticket->service_stage, $assessmentStages, true)
+            && (in_array($ticket->service_stage, $assessmentStages, true) || $ticket->service_stage === 'follow_up')
         )->values();
 
         $doctorActive = $activeTickets->filter(fn (Ticket $ticket) =>

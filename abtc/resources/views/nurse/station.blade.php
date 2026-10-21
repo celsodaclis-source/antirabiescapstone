@@ -21,7 +21,7 @@
                     @if ($currentTicket)
                         <p class="mt-1 text-sm text-slate-600"><span class="font-bold text-blue-900">{{ $currentTicket->ticket_number }}</span> · {{ $currentTicket->patient->fullName() }}</p>
                         @php($incident = $currentTicket->patient->biteIncidents->sortBy('date_of_bite')->first())
-                        <p class="text-xs text-slate-500">Registration and bite incident review in progress · <a class="text-blue-800 underline" href="{{ route('patients.show', $currentTicket->patient) }}">Open patient record</a></p>
+                        <p class="text-xs text-slate-500">{{ $currentTicket->service_stage === 'follow_up' ? 'Scheduled follow-up vaccine dose' : 'Registration and bite incident review in progress' }} · <a class="text-blue-800 underline" href="{{ route('patients.show', $currentTicket->patient) }}">Open patient record</a></p>
                         @if ($incident)
                             <dl class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-3">
                                 <div><dt class="font-semibold text-slate-700">Date of bite</dt><dd>{{ $incident->date_of_bite?->format('M j, Y') }}</dd></div>
@@ -33,7 +33,13 @@
                         <p class="mt-1 text-sm text-slate-600">No patient is currently being assessed.</p>
                     @endif
                 </div>
-                @if ($currentTicket)
+                @if ($currentTicket && $currentTicket->service_stage === 'follow_up')
+                    @if (! $vaccineReason)
+                        <a href="{{ route('nurse.station.vaccine.form', $currentTicket) }}" class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Administer Vaccine</a>
+                    @else
+                        <p class="max-w-sm text-right text-xs text-amber-800">Vaccine administration unavailable: {{ $vaccineReason }}</p>
+                    @endif
+                @elseif ($currentTicket)
                     <form method="POST" action="{{ route('nurse.station.assessment.complete', $currentTicket) }}">@csrf
                         <div class="mb-4 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 text-left sm:grid-cols-3">
                             <div>
@@ -61,7 +67,7 @@
                                 @error('animal_vaccinated')<p class="mt-1 text-xs text-rose-700">{{ $message }}</p>@enderror
                             </div>
                         </div>
-                        <button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Save Assessment &amp; Transfer</button>
+                        <button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Send to Doctor</button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('nurse.station.call-next') }}">@csrf
@@ -73,7 +79,7 @@
 
         <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <header class="flex flex-col gap-1 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div><h2 class="font-semibold text-slate-900">Waiting for Nurse Assessment</h2><p class="mt-1 text-sm text-slate-600">Call patients in priority order, then review their registration and bite incident.</p></div>
+                <div><h2 class="font-semibold text-slate-900">Waiting for Nurse Assessment</h2><p class="mt-1 text-sm text-slate-600">Call patients in priority order for assessment or a due, doctor-ordered follow-up dose.</p></div>
                 <span id="nurse-waiting-count" class="w-fit rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">{{ $waiting->total() }} Waiting</span>
             </header>
 
@@ -122,16 +128,18 @@
                         <form method="POST" action="{{ route('nurse.station.call-next') }}"><input type="hidden" name="_token" value="${esc(document.querySelector('meta[name=csrf-token]').content)}"><button ${canCall ? '' : 'disabled'} class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Call Next Patient</button></form>`;
                     const incident = current.incident || {};
                     const selected = (key, value) => String(incident[key] ?? '') === String(value) ? 'selected' : '';
-                    return `<div><h2 id="nurse-now-serving" class="font-semibold text-slate-900">Now Serving</h2>
+                    const heading = `<div><h2 id="nurse-now-serving" class="font-semibold text-slate-900">Now Serving</h2>
                         <p class="mt-1 text-sm text-slate-600"><span class="font-bold text-blue-900">${esc(current.number)}</span> · ${esc(current.patient)}</p>
-                        <p class="text-xs text-slate-500">Registration and bite incident review in progress${current.patient_url ? ` · <a class="text-blue-800 underline" href="${esc(current.patient_url)}">Open patient record</a>` : ''}</p>
+                        <p class="text-xs text-slate-500">${current.follow_up ? 'Scheduled follow-up vaccine dose' : 'Registration and bite incident review in progress'}${current.patient_url ? ` · <a class="text-blue-800 underline" href="${esc(current.patient_url)}">Open patient record</a>` : ''}</p>`;
+                    if (current.follow_up) return `${heading}</div>${current.vaccine_available ? `<a href="${esc(current.vaccine_url)}" class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">Administer Vaccine</a>` : `<p class="max-w-sm text-right text-xs text-amber-800">Vaccine administration unavailable: ${esc(current.vaccine_reason)}</p>`}`;
+                    return `${heading}
                         <dl class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-3"><div><dt class="font-semibold text-slate-700">Date of bite</dt><dd>${esc(incident.date_of_bite || '—')}</dd></div><div><dt class="font-semibold text-slate-700">Animal</dt><dd>${esc(incident.animal_type || '—')}</dd></div><div><dt class="font-semibold text-slate-700">Exposure Category</dt><dd>${esc(incident.exposure_category || 'Pending doctor review')}</dd></div></dl></div>
                         <form method="POST" action="${esc(current.assessment_url)}"><input type="hidden" name="_token" value="${esc(document.querySelector('meta[name=csrf-token]').content)}">
                             <div class="mb-4 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 text-left sm:grid-cols-3">
                                 <div><label for="bite_site" class="block text-xs font-semibold text-slate-700">Bite site *</label><input id="bite_site" name="bite_site" required maxlength="150" value="${esc(incident.bite_site || '')}" placeholder="For example, right forearm" class="mt-1 w-full rounded-lg border-slate-300 text-sm"></div>
                                 <div><label for="animal_status" class="block text-xs font-semibold text-slate-700">Animal status *</label><select id="animal_status" name="animal_status" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">Select status</option>${['Healthy','Sick','Dead','Unknown'].map((value) => `<option value="${value}" ${selected('animal_status', value)}>${value}</option>`).join('')}</select></div>
                                 <div><label for="animal_vaccinated" class="block text-xs font-semibold text-slate-700">Animal vaccinated? *</label><select id="animal_vaccinated" name="animal_vaccinated" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">Select answer</option><option value="1">Yes</option><option value="0">No</option></select></div>
-                            </div><button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Save Assessment &amp; Transfer</button>
+                            </div><button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Send to Doctor</button>
                         </form>`;
                 };
                 const refresh = async () => {

@@ -98,6 +98,10 @@ class ScheduleController extends Controller
 
     public function administer(Request $request, VaccinationSchedule $schedule): RedirectResponse
     {
+        if ($request->user()->role === 'Nurse') {
+            return back()->withErrors(['administration' => 'Queue the due dose and administer it from your assigned Nurse My Queue station.']);
+        }
+
         if ($schedule->status === 'administered') {
             return back()->with('status', 'This dose was already administered.');
         }
