@@ -65,6 +65,11 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Ticket::class, 'assigned_staff_id');
     }
 
+    public function nurseStation()
+    {
+        return $this->hasOne(NurseStation::class);
+    }
+
     public function auditLogs()
     {
         return $this->hasMany(\App\Models\AuditLog::class);

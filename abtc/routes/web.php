@@ -11,6 +11,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\NurseStationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -22,6 +23,10 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:Admin,Doctor,Nurse')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::middleware('role:Nurse')->prefix('nurse/stations')->name('nurse.stations.')->group(function () {
+        Route::post('/{station}/assign', [NurseStationController::class, 'assign'])->name('assign');
+        Route::delete('/release', [NurseStationController::class, 'release'])->name('release');
+    });
 
     // Patient Registration & Records
     Route::resource('patients', PatientController::class)->except(['create', 'store']);

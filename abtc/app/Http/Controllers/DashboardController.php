@@ -7,6 +7,7 @@ use App\Models\Ticket;
 use App\Models\VaccineInventory;
 use App\Models\VaccinationSchedule;
 use App\Models\SmsLog;
+use App\Models\NurseStation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,6 +17,14 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $role = $user->role;
+
+        if ($role === 'Nurse') {
+            return view('nurse.dashboard', [
+                'stations' => NurseStation::with('nurse')->orderBy('id')->get(),
+                'assignedStation' => NurseStation::where('user_id', $user->id)->first(),
+            ]);
+        }
+
         $today = Carbon::today();
 
         // ── Common KPIs ──

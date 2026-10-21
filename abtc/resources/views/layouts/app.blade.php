@@ -50,7 +50,7 @@
                             ['staff.tickets.create', 'Create Ticket', 'staff.tickets.*', 'queue'],
                             ['staff.queue.index', 'Queue Management', 'staff.queue.*', 'queue'],
                         ] : ($isNurse ? [
-                            ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['dashboard', 'Nurse Dashboard', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
                             ['inventory.index', 'Inventory', 'inventory.*', 'inventory'], ['reports.index', 'Reports', 'reports.*', 'reports'],
                             ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : [
