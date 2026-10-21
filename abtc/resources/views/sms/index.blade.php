@@ -19,7 +19,7 @@
             </div>
 
             @if (session('gateway_status'))
-                <div class="bg-{{ session('gateway_status.connected') ? 'green' : 'red' }}-100 border border-{{ session('gateway_status.connected') ? 'green' : 'red' }}-400 text-black px-4 py-3 rounded">
+                <div @if (session('gateway_status.connected')) data-autodismiss="5000" @endif role="{{ session('gateway_status.connected') ? 'status' : 'alert' }}" class="bg-{{ session('gateway_status.connected') ? 'green' : 'red' }}-100 border border-{{ session('gateway_status.connected') ? 'green' : 'red' }}-400 text-black px-4 py-3 rounded transition-opacity duration-300">
                     <strong>SMS Gateway:</strong> {{ session('gateway_status.message') }}
                     @if (session('gateway_status.device'))
                         <span class="ml-2">Device ID: <code>{{ session('gateway_status.device') }}</code></span>
@@ -31,7 +31,7 @@
             @endif
 
             @if (session('status'))
-                <div class="bg-green-100 border border-green-400 text-black px-4 py-3 rounded">
+                <div data-autodismiss="5000" role="status" class="bg-green-100 border border-green-400 text-black px-4 py-3 rounded transition-opacity duration-300">
                     {{ session('status') }}
                 </div>
             @endif

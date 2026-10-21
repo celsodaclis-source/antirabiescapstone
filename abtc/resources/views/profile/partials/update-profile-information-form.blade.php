@@ -39,7 +39,7 @@
                     </p>
 
                     @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-black">
+                        <p data-autodismiss="5000" class="mt-2 font-medium text-sm text-black transition-opacity duration-300">
                             {{ __('A new verification link has been sent to your email address.') }}
                         </p>
                     @endif
@@ -50,8 +50,8 @@
         <div class="flex items-center gap-4 text-black">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
-            @if (session('status') === 'profile-updated')
-                <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)" class="text-sm text-black">{{ __('Saved.') }}</p>
+                    @if (session('status') === 'profile-updated')
+                <p data-autodismiss="5000" class="text-sm text-black transition-opacity duration-300">{{ __('Saved.') }}</p>
             @endif
         </div>
     </form>

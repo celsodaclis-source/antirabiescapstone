@@ -114,10 +114,8 @@
     <div class="min-h-screen text-slate-900">
         <main class="mx-auto max-w-screen-2xl px-4 py-6 sm:px-6 xl:px-8">
             @if (session('status'))
-                <div class="mb-4">
-                    <div class="bg-green-100 border border-green-400 text-black px-4 py-3 rounded">
-                        {{ session('status') }}
-                    </div>
+                <div data-autodismiss="5000" role="status" class="mb-4 rounded bg-green-100 border border-green-400 px-4 py-3 text-black transition-opacity duration-300">
+                    {{ session('status') }}
                 </div>
             @endif
             {{ $slot }}
@@ -136,6 +134,14 @@
             portalDate.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
             portalTime.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }, 1000);
+
+        document.querySelectorAll('[data-autodismiss]').forEach((message) => {
+            const delay = Number(message.dataset.autodismiss) || 5000;
+            window.setTimeout(() => {
+                message.classList.add('opacity-0');
+                window.setTimeout(() => message.remove(), 300);
+            }, delay);
+        });
     </script>
 </body>
 </html>

@@ -5,7 +5,7 @@
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-black">
 
             @if (session('status'))
-                <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
+                <div data-autodismiss="5000" role="status" class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 transition-opacity duration-300">{{ session('status') }}</div>
             @endif
             @if ($errors->has('user'))
                 <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first('user') }}</div>

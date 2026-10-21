@@ -37,5 +37,14 @@
             <div class="px-7 py-8 sm:px-9">{{ $slot }}</div>
         </div>
     </main>
+    <script>
+        document.querySelectorAll('[data-autodismiss]').forEach((message) => {
+            const delay = Number(message.dataset.autodismiss) || 5000;
+            window.setTimeout(() => {
+                message.classList.add('opacity-0');
+                window.setTimeout(() => message.remove(), 300);
+            }, delay);
+        });
+    </script>
 </body>
 </html>
