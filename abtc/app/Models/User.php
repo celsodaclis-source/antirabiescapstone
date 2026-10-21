@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->hasOne(NurseStation::class);
     }
 
+    public function doctorStation()
+    {
+        return $this->hasOne(DoctorStation::class);
+    }
+
     public function auditLogs()
     {
         return $this->hasMany(\App\Models\AuditLog::class);

@@ -12,6 +12,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\NurseStationController;
+use App\Http\Controllers\DoctorStationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,6 +27,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:Nurse')->prefix('nurse/stations')->name('nurse.stations.')->group(function () {
         Route::post('/{station}/assign', [NurseStationController::class, 'assign'])->name('assign');
         Route::delete('/release', [NurseStationController::class, 'release'])->name('release');
+    });
+    Route::middleware('role:Doctor')->prefix('doctor/stations')->name('doctor.stations.')->group(function () {
+        Route::post('/{station}/assign', [DoctorStationController::class, 'assign'])->name('assign');
+        Route::delete('/release', [DoctorStationController::class, 'release'])->name('release');
     });
 
     // Patient Registration & Records
