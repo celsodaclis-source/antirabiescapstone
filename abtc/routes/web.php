@@ -25,6 +25,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:Admin,Doctor,Nurse')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::middleware('role:Doctor')->get('/doctor/dashboard/data', [DashboardController::class, 'doctorData'])->name('doctor.dashboard.data');
     Route::middleware('role:Admin')->prefix('queue-monitoring')->name('queue-monitoring.')->group(function () {
         Route::get('/', [QueueMonitoringController::class, 'index'])->name('index');
         Route::get('/data', [QueueMonitoringController::class, 'data'])->name('data');

@@ -11,6 +11,7 @@ use App\Models\NurseStation;
 use App\Models\DoctorStation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 
 class DashboardController extends Controller
 {
@@ -27,9 +28,12 @@ class DashboardController extends Controller
         }
 
         if ($role === 'Doctor') {
+            $dashboard = $this->doctorDashboardData($user);
+
             return view('doctor.dashboard', [
                 'stations' => DoctorStation::with('doctor')->orderBy('id')->get(),
                 'assignedStation' => DoctorStation::where('user_id', $user->id)->first(),
+                ...$dashboard,
             ]);
         }
 
@@ -130,5 +134,105 @@ class DashboardController extends Controller
             'overdue', 'lowStock', 'expiringSoon', 'labels', 'values',
             'recentTickets', 'smsRecent', 'todaySchedules', 'servedTodayCount'
         ));
+    }
+
+    public function doctorData(): JsonResponse
+    {
+        abort_unless(Auth::user()?->role === 'Doctor', 403);
+
+        return response()->json($this->doctorDashboardData(Auth::user()));
+    }
+
+    private function doctorDashboardData($doctor): array
+    {
+        $start = now()->startOfDay();
+        $end = now()->endOfDay();
+
+        // A ticket's assigned doctor and call/serve timestamps are the existing
+        // consultation assignment record; there is no separate consultations table.
+        $assignedToday = Ticket::query()
+            ->where('assigned_staff_id', $doctor->id)
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('called_at', [$start, $end])
+                    ->orWhere(function ($fallback) use ($start, $end) {
+                        $fallback->whereNull('called_at')->whereBetween('served_at', [$start, $end]);
+                    });
+            });
+
+        $completedToday = Ticket::query()
+            ->where('assigned_staff_id', $doctor->id)
+            ->where('status', 'completed')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereBetween('completed_at', [$start, $end]);
+
+        $doctorWaiting = Ticket::query()
+            ->where('status', 'waiting')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereNotNull('assessment_completed_at')
+            ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
+            ->distinct('patient_id')->count('patient_id');
+
+        $activeStationId = DoctorStation::where('user_id', $doctor->id)->value('id');
+        $currentlyServing = $activeStationId ? Ticket::query()
+            ->where('assigned_staff_id', $doctor->id)
+            ->where('status', 'in_progress')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->where(function ($query) use ($activeStationId) {
+                $query->where('doctor_station_id', $activeStationId)
+                    ->orWhere(function ($legacy) use ($activeStationId) {
+                        $legacy->whereNull('doctor_station_id')->where('counter_assigned', $activeStationId);
+                    });
+            })
+            ->distinct('patient_id')->count('patient_id') : 0;
+
+        $activityQuery = Ticket::with(['patient', 'doctorStation'])
+            ->where('assigned_staff_id', $doctor->id)
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->where(function ($query) use ($start, $end) {
+                $query->where(function ($completed) use ($start, $end) {
+                    $completed->where('status', 'completed')->whereBetween('completed_at', [$start, $end]);
+                })->orWhere(function ($active) use ($start, $end) {
+                    $active->whereIn('status', ['called', 'in_progress'])
+                        ->where(function ($assigned) use ($start, $end) {
+                            $assigned->whereBetween('called_at', [$start, $end])
+                                ->orWhere(function ($fallback) use ($start, $end) {
+                                    $fallback->whereNull('called_at')->whereBetween('served_at', [$start, $end]);
+                                })
+                                ->orWhere('status', 'in_progress');
+                        });
+                });
+            })
+            ->orderByRaw('COALESCE(completed_at, served_at, called_at) DESC')
+            ->orderByDesc('updated_at');
+
+        $stationNames = DoctorStation::pluck('name', 'id');
+        $activity = $activityQuery->paginate(10)->through(function (Ticket $ticket) use ($stationNames) {
+            $stationId = $ticket->doctor_station_id ?? $ticket->counter_assigned;
+            $stationName = $ticket->doctorStation?->name
+                ?? $stationNames->get($stationId);
+
+            return [
+                'ticket_number' => $ticket->ticket_number,
+                'patient_name' => $ticket->patient?->fullName() ?? 'Patient record unavailable',
+                'station_name' => $stationName ?? 'Station unavailable',
+                'status' => match ($ticket->status) {
+                    'completed' => 'Completed',
+                    'in_progress' => 'In Consultation',
+                    'called' => 'Called',
+                    default => ucfirst(str_replace('_', ' ', $ticket->status)),
+                },
+            ];
+        });
+
+        return [
+            'stats' => [
+                'my_patients_today' => (int) (clone $assignedToday)->distinct('patient_id')->count('patient_id'),
+                'consultations_completed' => $completedToday->count(),
+                'doctor_waiting' => $doctorWaiting,
+                'currently_serving' => $currentlyServing,
+            ],
+            'activity' => $activity,
+            'updated_at' => now()->toIso8601String(),
+        ];
     }
 }
