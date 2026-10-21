@@ -13,6 +13,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\NurseStationController;
 use App\Http\Controllers\DoctorStationController;
+use App\Http\Controllers\QueueMonitoringController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,12 +25,17 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:Admin,Doctor,Nurse')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::middleware('role:Admin')->prefix('queue-monitoring')->name('queue-monitoring.')->group(function () {
+        Route::get('/', [QueueMonitoringController::class, 'index'])->name('index');
+        Route::get('/data', [QueueMonitoringController::class, 'data'])->name('data');
+    });
     Route::middleware('role:Nurse')->prefix('nurse/stations')->name('nurse.stations.')->group(function () {
         Route::post('/{station}/assign', [NurseStationController::class, 'assign'])->name('assign');
         Route::delete('/release', [NurseStationController::class, 'release'])->name('release');
     });
     Route::middleware('role:Nurse')->prefix('nurse/station')->name('nurse.station.')->group(function () {
         Route::get('/', [NurseStationController::class, 'show'])->name('show');
+        Route::post('/call-next', [NurseStationController::class, 'callNext'])->name('call-next');
         Route::post('/tickets/{ticket}/assessment', [NurseStationController::class, 'completeAssessment'])->name('assessment.complete');
     });
     Route::middleware('role:Doctor')->prefix('doctor/stations')->name('doctor.stations.')->group(function () {

@@ -25,9 +25,11 @@ class DoctorStationWorkflowTest extends TestCase
         $nurseStation = NurseStation::where('name', 'Nurse 1')->firstOrFail();
         $this->actingAs($nurse)->post(route('nurse.stations.assign', $nurseStation))->assertRedirect();
         $this->get(route('nurse.station.show'))->assertOk()->assertSee('Waiting for Nurse Assessment')->assertSee('ASSESS-001');
+        $this->post(route('nurse.station.call-next'))->assertRedirect()->assertSessionHas('status');
+        $this->get(route('nurse.station.show'))->assertOk()->assertSee('Now Serving')->assertSee('ASSESS-001');
         $this->post(route('nurse.station.assessment.complete', $ticket))->assertRedirect()->assertSessionHas('status');
         $this->assertDatabaseHas('tickets', [
-            'id' => $ticket->id, 'assessment_completed_by' => $nurse->id,
+            'id' => $ticket->id, 'assessment_completed_by' => $nurse->id, 'status' => 'waiting',
         ]);
 
         $doctorStation = DoctorStation::where('name', 'Doctor 1')->firstOrFail();
@@ -103,6 +105,7 @@ class DoctorStationWorkflowTest extends TestCase
         $this->assertSame('waiting', $ticket->fresh()->status, 'A doctor cannot bypass the nurse assessment marker.');
 
         $this->actingAs($nurse)->post(route('nurse.stations.assign', $nurseStation))->assertRedirect();
+        $this->post(route('nurse.station.call-next'))->assertRedirect();
         $this->post(route('nurse.station.assessment.complete', $ticket))->assertRedirect();
         $this->actingAs($doctor)->post(route('queue.call-next'), ['counter' => 4])->assertRedirect();
         $this->assertDatabaseHas('tickets', [

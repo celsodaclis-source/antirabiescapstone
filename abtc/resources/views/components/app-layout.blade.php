@@ -71,6 +71,7 @@
                         <a href="{{ route($routeName) }}" class="inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-4 text-xs font-semibold transition-colors sm:px-3 sm:text-sm {{ request()->routeIs($activeRoute) ? 'border-blue-600 bg-blue-50/70 text-blue-700' : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950' }}"><x-icon :name="$icon" class="h-4 w-4" />{{ $label }}</a>
                     @endforeach
                     @if ($isAdmin)
+                        <a href="{{ route('queue-monitoring.index') }}" class="inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-4 text-xs font-semibold transition-colors sm:px-3 sm:text-sm {{ request()->routeIs('queue-monitoring.*') ? 'border-blue-600 bg-blue-50/70 text-blue-700' : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950' }}"><x-icon name="queue" class="h-4 w-4" />Queue Monitoring</a>
                         <a href="{{ route('settings.index') }}" class="inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-4 text-xs font-semibold transition-colors sm:px-3 sm:text-sm {{ request()->routeIs('settings.*') ? 'border-blue-600 bg-blue-50/70 text-blue-700' : 'border-transparent text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950' }}"><x-icon name="settings" class="h-4 w-4" />Settings</a>
                     @endif
                 </div>

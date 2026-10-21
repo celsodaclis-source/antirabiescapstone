@@ -21,6 +21,13 @@ class NurseStationController extends Controller
             return redirect()->route('dashboard')->withErrors(['station' => 'Open an available nurse station before reviewing patients.']);
         }
 
+        $currentTicket = Ticket::with(['patient.biteIncidents'])
+            ->where('assigned_staff_id', $nurse->id)
+            ->where('counter_assigned', $station->id)
+            ->whereIn('status', ['called', 'in_progress'])
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->first();
+
         $waiting = Ticket::with(['patient.biteIncidents', 'assessmentCompletedBy'])
             ->where('status', 'waiting')
             ->whereIn('service_stage', ['assessment', 'medical_review'])
@@ -28,7 +35,48 @@ class NurseStationController extends Controller
             ->priorityFirst()
             ->paginate(15);
 
-        return view('nurse.station', compact('station', 'waiting'));
+        return view('nurse.station', compact('station', 'waiting', 'currentTicket'));
+    }
+
+    public function callNext(): RedirectResponse
+    {
+        $nurse = request()->user();
+        [$ticket, $message] = DB::transaction(function () use ($nurse) {
+            NurseStation::orderBy('id')->lockForUpdate()->get();
+            $station = NurseStation::where('user_id', $nurse->id)->lockForUpdate()->first();
+            if (! $station) return [null, 'You must be assigned to a nurse station before calling a patient.'];
+
+            $active = Ticket::where('assigned_staff_id', $nurse->id)
+                ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($active) return [null, "Complete the assessment for {$active->ticket_number} before calling another patient."];
+
+            $stationActive = Ticket::where('counter_assigned', $station->id)
+                ->whereHas('assignedStaff', fn ($query) => $query->where('role', 'Nurse'))
+                ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+            if ($stationActive) return [null, "{$station->name} is already serving {$stationActive->ticket_number}."];
+
+            $next = Ticket::where('status', 'waiting')
+                ->whereIn('service_stage', ['assessment', 'medical_review'])
+                ->whereNull('assessment_completed_at')
+                ->priorityFirst()->lockForUpdate()->first();
+            if (! $next) return [null, 'No patients are waiting for nurse assessment.'];
+
+            $next->update([
+                'status' => 'in_progress',
+                'assigned_staff_id' => $nurse->id,
+                'counter_assigned' => $station->id,
+                'called_at' => now(),
+                'served_at' => now(),
+            ]);
+
+            return [$next, null];
+        });
+
+        if (! $ticket) return back()->withErrors(['station' => $message]);
+
+        Audit::log('nurse.station.call_next', "Nurse called ticket {$ticket->ticket_number} to {$ticket->counter_assigned} station", $ticket);
+
+        return back()->with('status', "Now serving {$ticket->ticket_number}.");
     }
 
     public function completeAssessment(Ticket $ticket): RedirectResponse
@@ -43,8 +91,10 @@ class NurseStationController extends Controller
                 }
 
                 $lockedTicket = Ticket::with('patient.biteIncidents')->lockForUpdate()->findOrFail($ticket->id);
-                if ($lockedTicket->status !== 'waiting' || ! in_array($lockedTicket->service_stage, ['assessment', 'medical_review'], true)) {
-                    throw ValidationException::withMessages(['assessment' => 'This ticket is no longer waiting for a nurse assessment.']);
+                if ($lockedTicket->status !== 'in_progress' || $lockedTicket->assigned_staff_id !== $nurse->id
+                    || $lockedTicket->counter_assigned !== $station->id
+                    || ! in_array($lockedTicket->service_stage, ['assessment', 'medical_review'], true)) {
+                    throw ValidationException::withMessages(['assessment' => 'This ticket is not being served at your active nurse station.']);
                 }
                 if ($lockedTicket->assessment_completed_at) {
                     throw ValidationException::withMessages(['assessment' => 'This assessment has already been completed.']);
@@ -57,8 +107,11 @@ class NurseStationController extends Controller
                 }
 
                 $lockedTicket->update([
+                    'status' => 'waiting',
                     'assessment_completed_by' => $nurse->id,
                     'assessment_completed_at' => now(),
+                    'assigned_staff_id' => null,
+                    'counter_assigned' => null,
                 ]);
 
                 Audit::log('nurse.assessment_complete', "Nurse assessment completed for ticket {$lockedTicket->ticket_number}", $lockedTicket);
@@ -107,6 +160,9 @@ class NurseStationController extends Controller
 
         DB::transaction(function () use ($user) {
             $station = NurseStation::where('user_id', $user->id)->lockForUpdate()->first();
+            if ($station && Ticket::where('assigned_staff_id', $user->id)->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->exists()) {
+                throw ValidationException::withMessages(['station' => 'Finish the active assessment before leaving your station.']);
+            }
             $station?->update(['user_id' => null]);
         });
 
