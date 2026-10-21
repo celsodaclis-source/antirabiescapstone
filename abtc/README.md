@@ -4,7 +4,7 @@ A data-driven ticketing and vaccination management system for the
 **Mandaluyong City Animal Bite Treatment Center (ABTC)**.
 
 Built with **Laravel 12 (PHP 8+)**, **Blade + Tailwind CSS**, **MySQL/MariaDB**
-(via Eloquent, with SQLite supported for quick local demos), **Laravel Breeze**
+(via Eloquent, with SQLite supported for local development), **Laravel Breeze**
 auth extended with **role-based access control**, and a **Semaphore SMS** wrapper.
 
 ## Modules
@@ -34,15 +34,6 @@ Philippine Data Privacy Act of 2012 (RA 10173) accountability requirement.
 Only `Admin/IT Support` can manage users and system settings; only
 `Admin/IT Support` and `Nurse` can manage inventory.
 
-## Demo credentials (seeded)
-
-| Role | Email | Password |
-|------|-------|----------|
-| Admin/IT Support | admin@abtc.gov.ph | password123 |
-| Doctor | doctor@abtc.gov.ph | password123 |
-| Nurse | nurse@abtc.gov.ph | password123 |
-| Staff | staff@abtc.gov.ph | password123 |
-
 ## Running locally (no MySQL required)
 
 The app defaults to a file-based **SQLite** database so it runs standalone.
@@ -51,12 +42,12 @@ The app defaults to a file-based **SQLite** database so it runs standalone.
 cp .env.example .env          # already present; DB_CONNECTION=sqlite
 composer install
 php artisan key:generate
-php artisan migrate --seed
+php artisan migrate
 php artisan serve              # http://127.0.0.1:8000
 ```
 
 > Frontend assets use the Tailwind Play CDN, so **no `npm install` / build step is
-> required** to run the demo. For an LGU/production build, run `npm install &&
+> required** for local development. For an LGU/production build, run `npm install &&
 > npm run build` and switch the layouts from the CDN `<script>` to
 > `@vite(['resources/css/app.css','resources/js/app.js'])`.
 
@@ -72,7 +63,7 @@ php artisan serve              # http://127.0.0.1:8000
    DB_PASSWORD=********
    ```
 2. `composer install --no-dev`
-3. `php artisan migrate --seed` (or `php artisan migrate --force` in production)
+3. `php artisan migrate --force`
 4. `npm install && npm run build`
 5. Point your web root at `public/` (set `APP_URL` and configure your virtual host).
 6. Schedule reminders with cron:

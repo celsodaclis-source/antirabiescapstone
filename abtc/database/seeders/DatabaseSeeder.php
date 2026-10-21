@@ -8,7 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Keep production/local application data real by default. Demo fixtures
-        // remain available only when AbtcDemoDataSeeder is explicitly requested.
+        // Application records are created through the authorized workflows.
     }
 }
