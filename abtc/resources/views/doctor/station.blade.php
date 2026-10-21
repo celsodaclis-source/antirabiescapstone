@@ -141,7 +141,14 @@
                     </tbody>
                 </table>
             </div>
-            @if ($waiting->hasPages())<div class="border-t border-slate-200 px-5 py-4">{{ $waiting->links() }}</div>@endif
+            @if ($waiting->total() > 0)
+                <div class="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-600">Showing {{ $waiting->firstItem() }} to {{ $waiting->lastItem() }} of {{ $waiting->total() }} results</p>
+                    @if ($waiting->hasPages())
+                        <nav aria-label="Doctor waiting list pagination">{{ $waiting->onEachSide(5)->links() }}</nav>
+                    @endif
+                </div>
+            @endif
         </section>
 
         <footer class="flex flex-wrap items-center justify-between gap-3">

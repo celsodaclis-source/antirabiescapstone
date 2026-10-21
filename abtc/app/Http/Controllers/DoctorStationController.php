@@ -28,7 +28,8 @@ class DoctorStationController extends Controller
             ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
             ->priorityFirst();
         $waitingCount = (clone $eligible)->count();
-        $waiting = (clone $eligible)->paginate(15);
+        // Keep the polling endpoint on the same page size as the rendered waiting list.
+        $waiting = (clone $eligible)->paginate(10);
 
         $currentTicket = Ticket::with(['patient.vaccinationSchedules', 'patient.biteIncidents'])
             ->where('assigned_staff_id', $doctor->id)
@@ -95,7 +96,7 @@ class DoctorStationController extends Controller
             ->orderByDesc('called_at')
             ->first();
 
-        $waiting = $eligible->paginate(15);
+        $waiting = $eligible->paginate(10);
         $stationBusy = Ticket::where('counter_assigned', $station->id)
             ->whereIn('status', ['called', 'in_progress'])
             ->where(function ($query) use ($doctor, $station) {
