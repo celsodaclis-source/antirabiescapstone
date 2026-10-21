@@ -2,6 +2,7 @@
     <x-slot name="header">Dashboard</x-slot>
     <div class="py-6 text-black">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        @php($queueDestination = $role === 'Admin' ? route('queue-monitoring.index') : route('queue.index'))
 
             <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                 <div class="flex items-center justify-between">
@@ -19,13 +20,13 @@
                         <div class="text-sm font-medium text-slate-600">Total Patients Today</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $patientsToday }}</div><div class="text-xs text-slate-500 mt-2">Registered today →</div>
                     </a>
                     @if ($role !== 'Nurse')
-                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
-                            <div class="text-sm font-medium text-slate-600">Waiting Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $waitingPatients }}</div><div class="text-xs text-slate-500 mt-2">Open queue →</div>
+                        <a href="{{ $queueDestination }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+                            <div class="text-sm font-medium text-slate-600">Waiting Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $waitingPatients }}</div><div class="text-xs text-slate-500 mt-2">{{ $role === 'Admin' ? 'Open Queue Monitoring →' : 'Open queue →' }}</div>
                         </a>
-                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
-                            <div class="text-sm font-medium text-slate-600">Currently Serving</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $currentlyServing }}</div><div class="text-xs text-slate-500 mt-2">View live queue →</div>
+                        <a href="{{ $queueDestination }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+                            <div class="text-sm font-medium text-slate-600">Currently Serving</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $currentlyServing }}</div><div class="text-xs text-slate-500 mt-2">{{ $role === 'Admin' ? 'View Queue Monitoring →' : 'View live queue →' }}</div>
                         </a>
-                        <a href="{{ route('queue.index') }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
+                        <a href="{{ $queueDestination }}" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition">
                             <div class="text-sm font-medium text-slate-600">Completed Patients</div><div class="text-3xl font-bold text-slate-900 mt-1">{{ $completedPatients }}</div><div class="text-xs text-slate-500 mt-2">Completed today</div>
                         </a>
                     @endif
