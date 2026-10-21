@@ -6,6 +6,7 @@ use App\Models\DoctorStation;
 use App\Models\NurseStation;
 use App\Models\Ticket;
 use App\Models\VaccineInventory;
+use App\Services\VaccineAuthorization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 
@@ -40,9 +41,9 @@ class QueueMonitoringController extends Controller
         $activeStatuses = ['called', 'in_progress'];
         $followUpTypes = [];
         if (config('vaccination.administration_sites', [])) {
-            $followUpTypes = VaccineInventory::whereIn('vaccine_name', array_keys(config('vaccination.administration_routes', [])))
-                ->where('quantity', '>', 0)->whereDate('expiration_date', '>=', today())
-                ->pluck('vaccine_name')->unique()->values()->all();
+            $followUpTypes = VaccineInventory::where('quantity', '>', 0)->whereDate('expiration_date', '>=', today())
+                ->pluck('vaccine_name')->unique()
+                ->reject(fn (string $name) => VaccineAuthorization::isImmunoglobulin($name))->values()->all();
         }
 
         $nurseWaitingQuery = Ticket::query()

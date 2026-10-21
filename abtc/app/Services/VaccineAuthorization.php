@@ -54,9 +54,6 @@ class VaccineAuthorization
         if ($reason = self::planError($patient, $schedule)) {
             return $reason;
         }
-        if (! config('vaccination.administration_routes.'.$patient->vaccine_type)) {
-            return 'The clinic has no approved route configured for this prescribed vaccine.';
-        }
         if (! config('vaccination.administration_sites', [])) {
             return 'Clinic-approved administration sites are not configured.';
         }

@@ -19,7 +19,6 @@ class NurseVaccineAdministrationTest extends TestCase
     public function test_nurse_can_administer_only_due_ordered_dose_at_active_station_and_stock_is_deducted_once(): void
     {
         config()->set('vaccination.administration_sites', ['Left deltoid']);
-        config()->set('vaccination.administration_routes.PVRV', 'clinic-approved route');
         $admin = User::factory()->create(['role' => 'Admin']);
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $patient = $this->patientWithOrder();
@@ -47,7 +46,6 @@ class NurseVaccineAdministrationTest extends TestCase
         $this->assertDatabaseHas('vaccination_schedules', [
             'id' => $schedule->id, 'status' => 'administered', 'administered_by' => $nurse->id,
             'inventory_id' => $batch->id, 'administration_site' => 'Left deltoid',
-            'administration_route' => 'clinic-approved route',
             'administration_remarks' => 'Observed after administration; no immediate reaction reported.',
         ]);
         $this->assertSame(1, $batch->fresh()->quantity);
@@ -66,7 +64,6 @@ class NurseVaccineAdministrationTest extends TestCase
     public function test_nurse_cannot_administer_without_approved_site_configuration_or_due_order(): void
     {
         config()->set('vaccination.administration_sites', []);
-        config()->set('vaccination.administration_routes.PVRV', 'clinic-approved route');
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $patient = $this->patientWithOrder();
         $schedule = $patient->vaccinationSchedules()->where('dose_number', 1)->firstOrFail();
@@ -84,7 +81,6 @@ class NurseVaccineAdministrationTest extends TestCase
     public function test_configured_due_follow_up_ticket_is_counted_only_in_nurse_waiting(): void
     {
         config()->set('vaccination.administration_sites', ['Left deltoid']);
-        config()->set('vaccination.administration_routes.PVRV', 'clinic-approved route');
         VaccineInventory::create([
             'batch_number' => 'QUEUE-VAX-01', 'vaccine_name' => 'PVRV', 'quantity' => 1,
             'expiration_date' => today()->addYear()->toDateString(), 'low_stock_threshold' => 1,

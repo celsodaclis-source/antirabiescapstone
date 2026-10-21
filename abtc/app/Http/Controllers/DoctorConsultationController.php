@@ -40,7 +40,6 @@ class DoctorConsultationController extends Controller
                     3 => 'days_0_3_7', 4 => 'days_0_3_7_28', default => null,
                 },
             ],
-            'routes' => config('vaccination.administration_routes', []),
             'scheduleOptions' => $this->scheduleOptions(),
         ]);
     }
@@ -201,7 +200,6 @@ class DoctorConsultationController extends Controller
             $consultation->fill(array_merge($data, [
                 'patient_id' => $locked->patient_id, 'doctor_id' => $doctorId,
                 'doctor_station_id' => $station->id, 'status' => 'draft', 'draft_saved_at' => now(),
-                'regimen_route' => ! empty($data['vaccine_type']) ? config('vaccination.administration_routes.'.$data['vaccine_type']) : null,
             ]));
             $consultation->save();
             Audit::log('doctor.consultation.draft', "Saved consultation draft for {$locked->ticket_number}", $consultation);
@@ -232,9 +230,6 @@ class DoctorConsultationController extends Controller
                 $expected = $this->scheduleText($days);
                 if ((int) $consultation->planned_dose_count !== $doseCount) $errors['planned_dose_count'] = 'The dose count must match the selected provider-ordered schedule.';
                 if ($consultation->vaccination_schedule !== $expected) $errors['vaccination_schedule'] = 'The schedule text must match the selected approved regimen.';
-            }
-            if (filled($consultation->vaccine_type) && ! config('vaccination.administration_routes.'.$consultation->vaccine_type)) {
-                $errors['regimen_route'] = 'The clinic has no approved route configured for this vaccine.';
             }
             if ($consultation->disposition === 'route_to_nurse') {
                 if (! config('vaccination.administration_sites', [])) $errors['disposition'] = 'Configure approved nurse administration sites before routing a patient for vaccination.';

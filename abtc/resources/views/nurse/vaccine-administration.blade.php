@@ -27,8 +27,6 @@
 
             @if ($authorization)
                 <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{{ $authorization }} Vaccine administration is blocked until the order and dose are verified.</div>
-            @elseif (! $route)
-                <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">The clinic has no approved administration route configured for {{ $patient->vaccine_type }}. Ask an authorized clinician or administrator to verify the protocol before recording a dose.</div>
             @elseif (! $sites)
                 <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">The clinic has not configured approved administration sites. Ask an administrator to set the clinic's protocol-approved sites before recording a dose.</div>
             @elseif ($batches->isEmpty())
@@ -40,10 +38,6 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Vaccine / Treatment</label>
                             <input value="{{ $patient->vaccine_type }}" readonly class="mt-1 w-full rounded-lg border-slate-300 bg-slate-50 text-sm text-slate-700">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Authorized administration route</label>
-                            <input value="{{ $route }}" readonly class="mt-1 w-full rounded-lg border-slate-300 bg-slate-50 text-sm text-slate-700">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Dose number</label>

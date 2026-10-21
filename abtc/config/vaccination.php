@@ -7,6 +7,4 @@ return [
         'trim',
         explode(',', (string) env('VACCINE_ADMINISTRATION_SITES', ''))
     ))),
-    // JSON map of doctor-order vaccine names to clinic-approved routes.
-    'administration_routes' => json_decode((string) env('VACCINE_ADMINISTRATION_ROUTES', '{}'), true) ?: [],
 ];

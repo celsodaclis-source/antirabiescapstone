@@ -469,9 +469,6 @@ class NurseAssessmentController extends Controller
         if ($reason = VaccineAuthorization::planError($patient, $due)) {
             return [$due, ['routing_option' => $reason]];
         }
-        if (! config('vaccination.administration_routes.'.$patient->vaccine_type)) {
-            return [$due, ['routing_option' => 'The clinic has no approved administration route configured for this prescribed vaccine.']];
-        }
         if (! config('vaccination.administration_sites', [])) {
             return [$due, ['routing_option' => 'Clinic-approved administration sites are not configured.']];
         }
@@ -519,7 +516,6 @@ class NurseAssessmentController extends Controller
             $checks[] = ['label' => 'Clinical order', 'ok' => filled($patient?->vaccine_type), 'detail' => filled($patient?->vaccine_type) ? $patient->vaccine_type.' · '.($patient->planned_dose_count ?: '?').' planned doses' : 'No doctor-ordered vaccine on the patient record.'];
             $checks[] = ['label' => 'Scheduled dose', 'ok' => (bool) $due, 'detail' => $due ? "Dose {$due->dose_number} due {$due->scheduled_date?->format('M j, Y')}" : 'No dose is currently due.'];
             $checks[] = ['label' => 'Exposure category', 'ok' => filled($incident?->exposure_category), 'detail' => filled($incident?->exposure_category) ? 'Category '.$incident->exposure_category : 'Pending doctor review.'];
-            $checks[] = ['label' => 'Approved administration route', 'ok' => (bool) config('vaccination.administration_routes.'.$patient?->vaccine_type), 'detail' => config('vaccination.administration_routes.'.$patient?->vaccine_type) ?: 'Not configured by the clinic.'];
             $sites = config('vaccination.administration_sites', []);
             $checks[] = ['label' => 'Approved administration sites', 'ok' => (bool) $sites, 'detail' => $sites ? implode(', ', $sites) : 'Not configured by the clinic.'];
             $batch = filled($patient?->vaccine_type) ? VaccineInventory::where('vaccine_name', $patient->vaccine_type)

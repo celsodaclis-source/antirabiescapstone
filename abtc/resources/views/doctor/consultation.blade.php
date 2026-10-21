@@ -5,7 +5,6 @@
         $saved = $consultation;
         $value = fn ($key, $fallback = null) => old($key, $saved?->{$key} ?? $fallback);
         $selectedVaccine = $value('vaccine_type', $existingOrder['vaccine_type']);
-        $configuredRoute = $selectedVaccine ? ($routes[$selectedVaccine] ?? null) : null;
         $patientType = ucfirst($ticket->visit_type ?? $patient->patient_type ?? 'Patient');
         $dispositions = [
             'route_to_nurse' => 'Route to Nurse — For Vaccination / Treatment',
@@ -70,11 +69,6 @@
                         @if (!$vaccineTypes)<p class="mt-1 text-xs text-amber-800">No unexpired vaccine with stock is available. The treatment decision must be reviewed before finalization.</p>@endif
                         @error('vaccine_type')<p class="mt-1 text-sm text-rose-700">{{ $message }}</p>@enderror
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Regimen / Route</label>
-                        <div id="route-display" class="mt-1 min-h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{{ $configuredRoute ?: 'Not configured for the selected vaccine' }}</div>
-                        @error('regimen_route')<p class="mt-1 text-sm text-rose-700">{{ $message }}</p>@enderror
-                    </div>
                     <div class="sm:col-span-2">
                         <label for="schedule_code" class="block text-sm font-medium text-slate-700">Vaccination Schedule</label>
                         <select id="schedule_code" name="schedule_code" class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm"><option value="">Select provider-ordered regimen</option>@foreach ($scheduleOptions as $option)<option value="{{ $option['code'] }}" data-dose-count="{{ $option['dose_count'] }}" data-label="{{ $option['label'] }}" @selected($value('schedule_code', $existingOrder['schedule_code']) === $option['code'])>{{ $option['label'] }} ({{ $option['dose_count'] }} doses)</option>@endforeach</select>
@@ -134,21 +128,16 @@
             const schedules = document.getElementById('schedule_code');
             const count = document.getElementById('planned_dose_count');
             const text = document.getElementById('vaccination_schedule');
-            const vaccine = document.getElementById('vaccine_type');
-            const routeDisplay = document.getElementById('route-display');
-            const routes = @json($routes);
             const syncSchedule = () => {
                 const option = schedules.options[schedules.selectedIndex];
                 count.value = option?.dataset.doseCount || '';
                 text.value = option?.dataset.label || '';
             };
-            const syncRoute = () => routeDisplay.textContent = routes[vaccine.value] || 'Not configured for the selected vaccine';
             const syncDisposition = () => {
                 const refer = document.querySelector('input[name="disposition"]:checked')?.value === 'refer';
                 document.getElementById('referral-field').classList.toggle('hidden', !refer);
             };
             schedules.addEventListener('change', syncSchedule);
-            vaccine.addEventListener('change', syncRoute);
             document.querySelectorAll('input[name="disposition"]').forEach(input => input.addEventListener('change', syncDisposition));
             syncDisposition();
         })();

@@ -9,7 +9,7 @@ class Consultation extends Model
     protected $fillable = [
         'ticket_id', 'patient_id', 'doctor_id', 'doctor_station_id', 'status',
         'clinical_narrative', 'exposure_category', 'vaccine_type',
-        'regimen_route', 'schedule_code', 'vaccination_schedule', 'planned_dose_count',
+        'schedule_code', 'vaccination_schedule', 'planned_dose_count',
         'additional_instructions', 'disposition', 'disposition_remarks', 'referral_destination',
         'draft_saved_at', 'finalized_at',
     ];

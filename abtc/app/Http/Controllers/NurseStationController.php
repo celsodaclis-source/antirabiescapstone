@@ -165,7 +165,6 @@ class NurseStationController extends Controller
         $patient = $ticket->patient;
         $authorization = $this->vaccineAuthorizationError($patient, $schedule);
         $sites = config('vaccination.administration_sites', []);
-        $route = $patient?->vaccine_type ? config('vaccination.administration_routes.'.$patient->vaccine_type) : null;
         $batches = collect();
         if (! $authorization && $patient->vaccine_type && ! $this->isImmunoglobulin($patient->vaccine_type)) {
             $batches = VaccineInventory::where('vaccine_name', $patient->vaccine_type)
@@ -174,7 +173,7 @@ class NurseStationController extends Controller
                 ->orderBy('expiration_date')->orderBy('id')->get();
         }
 
-        return view('nurse.vaccine-administration', compact('ticket', 'station', 'schedule', 'patient', 'authorization', 'sites', 'route', 'batches'));
+        return view('nurse.vaccine-administration', compact('ticket', 'station', 'schedule', 'patient', 'authorization', 'sites', 'batches'));
     }
 
     public function administerVaccine(Request $request, Ticket $ticket): RedirectResponse
@@ -208,9 +207,6 @@ class NurseStationController extends Controller
                 if ($reason) {
                     throw ValidationException::withMessages(['authorization' => $reason]);
                 }
-                if (! ($route = config('vaccination.administration_routes.'.$patient->vaccine_type))) {
-                    throw ValidationException::withMessages(['authorization' => 'The clinic has no approved administration route configured for this prescribed vaccine.']);
-                }
 
                 $administrationDate = \Illuminate\Support\Carbon::parse($data['administration_date'], config('app.timezone'))->startOfDay();
                 if ($schedule->scheduled_date->gt($administrationDate)) {
@@ -231,7 +227,6 @@ class NurseStationController extends Controller
                 $schedule->update([
                     'status' => 'administered', 'administered_at' => $administrationDate,
                     'administered_by' => $nurse->id, 'inventory_id' => $batch->id,
-                    'administration_route' => $route,
                     'administration_site' => $data['administration_site'],
                     'administration_remarks' => $data['administration_remarks'],
                 ]);
@@ -281,10 +276,8 @@ class NurseStationController extends Controller
     private function eligibleFollowUpVaccineTypes(): array
     {
         if (! config('vaccination.administration_sites', [])) return [];
-        $configured = array_keys(config('vaccination.administration_routes', []));
-        return VaccineInventory::whereIn('vaccine_name', $configured)->where('quantity', '>', 0)
-            ->whereDate('expiration_date', '>=', today())->pluck('vaccine_name')->unique()
-            ->reject(fn (string $name) => $this->isImmunoglobulin($name))->values()->all();
+        return VaccineInventory::where('quantity', '>', 0)->whereDate('expiration_date', '>=', today())
+            ->pluck('vaccine_name')->unique()->reject(fn (string $name) => $this->isImmunoglobulin($name))->values()->all();
     }
 
     private function isImmunoglobulin(string $productName): bool

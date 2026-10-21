@@ -19,7 +19,6 @@ class DoctorStationWorkflowTest extends TestCase
 
     public function test_nurse_assessment_queues_patient_for_doctor_and_consultation_completion_keeps_doses_scheduled(): void
     {
-        config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $doctor = User::factory()->create(['role' => 'Doctor']);
         $admin = User::factory()->create(['role' => 'Admin']);

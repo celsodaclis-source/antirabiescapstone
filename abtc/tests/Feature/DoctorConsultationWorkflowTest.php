@@ -41,7 +41,6 @@ class DoctorConsultationWorkflowTest extends TestCase
     public function test_finalization_requires_clinic_decision_and_narrative_and_routes_original_ticket_to_nurse(): void
     {
         [$doctor, $ticket] = $this->activeConsultation(true);
-        config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         config()->set('vaccination.administration_sites', ['Left deltoid']);
         VaccineInventory::create([
             'batch_number' => 'CONSULT-1', 'vaccine_name' => 'PVRV', 'quantity' => 10,
@@ -108,7 +107,6 @@ class DoctorConsultationWorkflowTest extends TestCase
 
     public function test_on_hold_and_referral_dispositions_remain_visible_as_held_work(): void
     {
-        config()->set('vaccination.administration_routes', ['PVRV' => 'IM']);
         VaccineInventory::create([
             'batch_number' => 'HOLD-1', 'vaccine_name' => 'PVRV', 'quantity' => 10,
             'expiration_date' => now()->addYear()->toDateString(), 'low_stock_threshold' => 1,

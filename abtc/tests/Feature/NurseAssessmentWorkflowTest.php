@@ -167,7 +167,6 @@ class NurseAssessmentWorkflowTest extends TestCase
     public function test_vaccine_routing_requires_an_authorized_plan_and_never_deducts_stock(): void
     {
         config()->set('vaccination.administration_sites', ['Left deltoid']);
-        config()->set('vaccination.administration_routes.PVRV', 'IM');
         $nurse = User::factory()->create(['role' => 'Nurse']);
         $station = $this->assignStation($nurse, 'Nurse 1');
         $batch = VaccineInventory::create([
