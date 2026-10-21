@@ -84,7 +84,7 @@ class DoctorStationController extends Controller
             ->priorityFirst();
         $doctorWaiting = (clone $eligible)->count();
 
-        $currentTicket = Ticket::with(['patient.biteIncidents', 'patient.vaccinationSchedules', 'assignedStaff', 'assessmentCompletedBy'])
+        $currentTicket = Ticket::with(['patient.biteIncidents', 'patient.vaccinationSchedules', 'assignedStaff', 'assessmentCompletedBy', 'nurseAssessment'])
             ->where('assigned_staff_id', $doctor->id)
             ->where(function ($query) use ($station) {
                 $query->where('doctor_station_id', $station->id)

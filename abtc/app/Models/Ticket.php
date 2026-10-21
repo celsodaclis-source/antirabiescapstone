@@ -65,6 +65,11 @@ class Ticket extends Model
         return $this->hasOne(Consultation::class);
     }
 
+    public function nurseAssessment()
+    {
+        return $this->hasOne(NurseAssessment::class);
+    }
+
     public function statusColor(): string
     {
         return match ($this->status) {

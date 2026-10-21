@@ -154,7 +154,7 @@ class DoctorConsultationController extends Controller
         $doctor = request()->user();
         $station = DoctorStation::where('user_id', $doctor->id)->first();
         abort_unless($station, 403, 'Open your assigned doctor station first.');
-        $ticket->load(['patient.biteIncidents', 'patient.vaccinationSchedules', 'assessmentCompletedBy', 'consultation']);
+        $ticket->load(['patient.biteIncidents', 'patient.vaccinationSchedules', 'assessmentCompletedBy', 'consultation', 'nurseAssessment']);
         $this->assertActiveTicket($ticket, $doctor->id, $station->id);
         if ($ticket->consultation && $ticket->consultation->doctor_id !== $doctor->id) abort(403, 'This consultation belongs to another doctor.');
         $patient = $ticket->patient;

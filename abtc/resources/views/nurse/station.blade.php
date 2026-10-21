@@ -40,35 +40,10 @@
                         <p class="max-w-sm text-right text-xs text-amber-800">Vaccine administration unavailable: {{ $vaccineReason }}</p>
                     @endif
                 @elseif ($currentTicket)
-                    <form method="POST" action="{{ route('nurse.station.assessment.complete', $currentTicket) }}">@csrf
-                        <div class="mb-4 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 text-left sm:grid-cols-3">
-                            <div>
-                                <label for="bite_site" class="block text-xs font-semibold text-slate-700">Bite site <span class="text-rose-600">*</span></label>
-                                <input id="bite_site" name="bite_site" required maxlength="150" value="{{ old('bite_site', $incident?->bite_site) }}" placeholder="For example, right forearm" class="mt-1 w-full rounded-lg border-slate-300 text-sm">
-                                @error('bite_site')<p class="mt-1 text-xs text-rose-700">{{ $message }}</p>@enderror
-                            </div>
-                            <div>
-                                <label for="animal_status" class="block text-xs font-semibold text-slate-700">Animal status <span class="text-rose-600">*</span></label>
-                                <select id="animal_status" name="animal_status" required class="mt-1 w-full rounded-lg border-slate-300 text-sm">
-                                    <option value="">Select status</option>
-                                    @foreach (['Healthy', 'Sick', 'Dead', 'Unknown'] as $animalStatus)
-                                        <option value="{{ $animalStatus }}" @selected(old('animal_status', $incident?->animal_status) === $animalStatus)>{{ $animalStatus }}</option>
-                                    @endforeach
-                                </select>
-                                @error('animal_status')<p class="mt-1 text-xs text-rose-700">{{ $message }}</p>@enderror
-                            </div>
-                            <div>
-                                <label for="animal_vaccinated" class="block text-xs font-semibold text-slate-700">Animal vaccinated? <span class="text-rose-600">*</span></label>
-                                <select id="animal_vaccinated" name="animal_vaccinated" required class="mt-1 w-full rounded-lg border-slate-300 text-sm">
-                                    <option value="">Select answer</option>
-                                    <option value="1" @selected((string) old('animal_vaccinated', '') === '1')>Yes</option>
-                                    <option value="0" @selected((string) old('animal_vaccinated', '') === '0')>No</option>
-                                </select>
-                                @error('animal_vaccinated')<p class="mt-1 text-xs text-rose-700">{{ $message }}</p>@enderror
-                            </div>
-                        </div>
-                        <button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Send to Doctor</button>
-                    </form>
+                    <div class="max-w-sm text-right">
+                        <p class="text-xs text-slate-500">Assessment status: <span class="font-semibold text-slate-700">{{ $currentTicket->nurseAssessment?->statusLabel() ?? 'Not started' }}</span></p>
+                        <a href="{{ route('nurse.station.assessment.form', $currentTicket) }}" class="mt-2 inline-block rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Open Nurse Assessment Form</a>
+                    </div>
                 @else
                     <form method="POST" action="{{ route('nurse.station.call-next') }}">@csrf
                         <button @disabled($waiting->isEmpty()) class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300">Call Next Patient</button>
@@ -107,8 +82,40 @@
                 <div class="border-t border-slate-200 px-5 py-4">{{ $waiting->links() }}</div>
             @endif
         </section>
+        @if ($heldForResume->isNotEmpty())
+            <section class="mt-5 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-labelledby="nurse-held-title">
+                <header class="border-b border-amber-200 bg-amber-50 px-5 py-4">
+                    <h2 id="nurse-held-title" class="font-semibold text-slate-900">On Hold — Awaiting Further Assessment</h2>
+                    <p class="mt-1 text-sm text-slate-600">Tickets placed on hold during a nurse assessment. Resuming restores the saved draft on the original ticket.</p>
+                </header>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[700px] text-left text-sm">
+                        <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+                            <tr><th class="px-5 py-3">Queue #</th><th class="px-5 py-3">Patient</th><th class="px-5 py-3">Hold reason</th><th class="px-5 py-3">Action</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse ($heldForResume as $heldTicket)
+                                <tr>
+                                    <td class="whitespace-nowrap px-5 py-4 font-semibold text-slate-900">{{ $heldTicket->ticket_number }}</td>
+                                    <td class="px-5 py-4"><a class="font-medium text-blue-800 underline decoration-blue-200 underline-offset-2" href="{{ route('patients.show', $heldTicket->patient) }}">{{ $heldTicket->patient?->fullName() ?? 'Patient record unavailable' }}</a></td>
+                                    <td class="px-5 py-4 text-slate-700">{{ \Illuminate\Support\Str::limit($heldTicket->nurseAssessment?->nursing_remarks, 120) ?: 'No reason recorded' }}</td>
+                                    <td class="px-5 py-4">
+                                        <form method="POST" action="{{ route('nurse.station.assessment.resume', $heldTicket) }}">@csrf
+                                            <button class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">Resume Assessment</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="px-5 py-8 text-center text-slate-600">No assessments are on hold.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-xs text-slate-500">Assessment saves the bite site and animal status details to the bite incident. It does not record vitals, clinical findings, or a diagnosis.</p>
+            <p class="text-xs text-slate-500">Open the Nurse Assessment Form to record vital signs, assessment observations, and patient routing. Completed assessments are transferred on the original ticket; no duplicate tickets are created.</p>
             <form method="POST" action="{{ route('nurse.stations.release') }}">@csrf @method('DELETE')<button class="text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4">Leave Station</button></form>
         </div>
         <p class="text-right text-xs text-slate-500"><span id="nurse-queue-refresh-error" class="hidden text-rose-700" role="status">Unable to refresh the Nurse queue.</span><span id="nurse-queue-updated">Queue refreshes every 8 seconds.</span></p>
@@ -127,20 +134,16 @@
                     if (!current) return `<div><h2 id="nurse-now-serving" class="font-semibold text-slate-900">Now Serving</h2><p class="mt-1 text-sm text-slate-600">No patient is currently being assessed.</p></div>
                         <form method="POST" action="{{ route('nurse.station.call-next') }}"><input type="hidden" name="_token" value="${esc(document.querySelector('meta[name=csrf-token]').content)}"><button ${canCall ? '' : 'disabled'} class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Call Next Patient</button></form>`;
                     const incident = current.incident || {};
-                    const selected = (key, value) => String(incident[key] ?? '') === String(value) ? 'selected' : '';
                     const heading = `<div><h2 id="nurse-now-serving" class="font-semibold text-slate-900">Now Serving</h2>
                         <p class="mt-1 text-sm text-slate-600"><span class="font-bold text-blue-900">${esc(current.number)}</span> · ${esc(current.patient)}</p>
                         <p class="text-xs text-slate-500">${current.follow_up ? 'Scheduled follow-up vaccine dose' : 'Registration and bite incident review in progress'}${current.patient_url ? ` · <a class="text-blue-800 underline" href="${esc(current.patient_url)}">Open patient record</a>` : ''}</p>`;
                     if (current.follow_up) return `${heading}</div>${current.vaccine_available ? `<a href="${esc(current.vaccine_url)}" class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">Administer Vaccine</a>` : `<p class="max-w-sm text-right text-xs text-amber-800">Vaccine administration unavailable: ${esc(current.vaccine_reason)}</p>`}`;
                     return `${heading}
                         <dl class="mt-3 grid grid-cols-1 gap-2 text-xs text-slate-600 sm:grid-cols-3"><div><dt class="font-semibold text-slate-700">Date of bite</dt><dd>${esc(incident.date_of_bite || '—')}</dd></div><div><dt class="font-semibold text-slate-700">Animal</dt><dd>${esc(incident.animal_type || '—')}</dd></div><div><dt class="font-semibold text-slate-700">Exposure Category</dt><dd>${esc(incident.exposure_category || 'Pending doctor review')}</dd></div></dl></div>
-                        <form method="POST" action="${esc(current.assessment_url)}"><input type="hidden" name="_token" value="${esc(document.querySelector('meta[name=csrf-token]').content)}">
-                            <div class="mb-4 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 text-left sm:grid-cols-3">
-                                <div><label for="bite_site" class="block text-xs font-semibold text-slate-700">Bite site *</label><input id="bite_site" name="bite_site" required maxlength="150" value="${esc(incident.bite_site || '')}" placeholder="For example, right forearm" class="mt-1 w-full rounded-lg border-slate-300 text-sm"></div>
-                                <div><label for="animal_status" class="block text-xs font-semibold text-slate-700">Animal status *</label><select id="animal_status" name="animal_status" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">Select status</option>${['Healthy','Sick','Dead','Unknown'].map((value) => `<option value="${value}" ${selected('animal_status', value)}>${value}</option>`).join('')}</select></div>
-                                <div><label for="animal_vaccinated" class="block text-xs font-semibold text-slate-700">Animal vaccinated? *</label><select id="animal_vaccinated" name="animal_vaccinated" required class="mt-1 w-full rounded-lg border-slate-300 text-sm"><option value="">Select answer</option><option value="1">Yes</option><option value="0">No</option></select></div>
-                            </div><button class="rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">Send to Doctor</button>
-                        </form>`;
+                        <div class="max-w-sm text-right">
+                            <p class="text-xs text-slate-500">Assessment status: <span class="font-semibold text-slate-700">${esc(current.assessment_status || 'Not started')}</span></p>
+                            ${current.assessment_form_url ? `<a href="${esc(current.assessment_form_url)}" class="mt-2 inline-block rounded-lg bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white">Open Nurse Assessment Form</a>` : ''}
+                        </div>`;
                 };
                 const refresh = async () => {
                     if (refreshing || document.hidden) return;

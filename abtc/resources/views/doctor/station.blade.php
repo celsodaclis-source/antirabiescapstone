@@ -65,6 +65,9 @@
                                 <div><dt class="text-xs font-medium text-slate-500">Animal / bite site</dt><dd class="mt-0.5 text-slate-800">{{ $biteAssessment->animal_type }} · {{ $biteAssessment->bite_site ?: '—' }}</dd></div>
                                 <div><dt class="text-xs font-medium text-slate-500">Animal status</dt><dd class="mt-0.5 text-slate-800">{{ $biteAssessment->animal_status ?: '—' }}</dd></div>
                                 <div><dt class="text-xs font-medium text-slate-500">Animal vaccinated</dt><dd class="mt-0.5 text-slate-800">{{ $biteAssessment->animal_vaccinated ? 'Yes' : 'No' }}</dd></div>
+                                <div class="sm:col-span-2 lg:col-span-4"><dt class="text-xs font-medium text-slate-500">Vital signs</dt><dd class="mt-0.5 text-slate-800">{{ $currentTicket->nurseAssessment?->vitalSignsSummary() ?: '—' }}</dd></div>
+                                <div class="sm:col-span-2 lg:col-span-4"><dt class="text-xs font-medium text-slate-500">Assessment and observations</dt><dd class="mt-0.5 whitespace-pre-wrap text-slate-800">{{ $currentTicket->nurseAssessment?->assessment_observations ?: '—' }}</dd></div>
+                                <div class="sm:col-span-2 lg:col-span-4"><dt class="text-xs font-medium text-slate-500">Additional nursing remarks</dt><dd class="mt-0.5 whitespace-pre-wrap text-slate-800">{{ $currentTicket->nurseAssessment?->nursing_remarks ?: '—' }}</dd></div>
                             </dl>
                         @else
                             <p class="mt-2 text-sm text-amber-800">The ticket is marked assessed, but its bite incident record is unavailable.</p>

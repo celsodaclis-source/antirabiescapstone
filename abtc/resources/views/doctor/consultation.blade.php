@@ -34,14 +34,17 @@
             <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <h2 class="text-base font-bold text-slate-900">Nursing Assessment Summary</h2>
                 <p class="mt-1 text-xs text-slate-500">Read-only information from the saved nurse assessment and bite incident record.</p>
+                @php($nurseAssessment = $ticket->nurseAssessment)
                 <dl class="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
                     <div><dt class="text-xs font-medium text-slate-500">Date of bite / exposure</dt><dd class="mt-1 text-slate-900">{{ $incident->date_of_bite?->format('M j, Y') ?? 'Not recorded' }}</dd></div>
                     <div><dt class="text-xs font-medium text-slate-500">Animal type</dt><dd class="mt-1 text-slate-900">{{ $incident->animal_type ?: 'Not recorded' }}</dd></div>
                     <div><dt class="text-xs font-medium text-slate-500">Bite site</dt><dd class="mt-1 text-slate-900">{{ $incident->bite_site ?: 'Not recorded' }}</dd></div>
                     <div><dt class="text-xs font-medium text-slate-500">Animal status</dt><dd class="mt-1 text-slate-900">{{ $incident->animal_status ?: 'Not recorded' }}</dd></div>
                     <div><dt class="text-xs font-medium text-slate-500">Animal vaccinated</dt><dd class="mt-1 text-slate-900">{{ is_null($incident->animal_vaccinated) ? 'Not recorded' : ($incident->animal_vaccinated ? 'Yes' : 'No') }}</dd></div>
-                    <div><dt class="text-xs font-medium text-slate-500">Vital signs / observations</dt><dd class="mt-1 text-slate-900">Not recorded</dd></div>
-                    <div><dt class="text-xs font-medium text-slate-500">Assessment status</dt><dd class="mt-1 text-slate-900">{{ $ticket->assessment_completed_at ? 'Completed' : 'Not recorded' }}</dd></div>
+                    <div><dt class="text-xs font-medium text-slate-500">Vital signs</dt><dd class="mt-1 text-slate-900">{{ $nurseAssessment?->vitalSignsSummary() ?: 'Not recorded' }}</dd></div>
+                    <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs font-medium text-slate-500">Assessment and observations</dt><dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $nurseAssessment?->assessment_observations ?: 'Not recorded' }}</dd></div>
+                    <div class="sm:col-span-2 lg:col-span-3"><dt class="text-xs font-medium text-slate-500">Additional nursing remarks</dt><dd class="mt-1 whitespace-pre-wrap text-slate-900">{{ $nurseAssessment?->nursing_remarks ?: 'None recorded' }}</dd></div>
+                    <div><dt class="text-xs font-medium text-slate-500">Assessment status</dt><dd class="mt-1 text-slate-900">{{ $ticket->assessment_completed_at ? 'Completed'.($nurseAssessment?->completed_at ? ' · '.$nurseAssessment->completed_at->format('M j, Y g:i A') : '') : 'Not recorded' }}</dd></div>
                 </dl>
             </section>
 

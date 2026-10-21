@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\VaccinationSchedule;
 use App\Models\VaccineInventory;
 use App\Services\Audit;
+use App\Services\VaccineAuthorization;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,7 @@ class NurseStationController extends Controller
         $station = NurseStation::where('user_id', $nurse->id)->first();
         if (! $station) return response()->json(['message' => 'No active nurse station.'], 409);
 
-        $currentTicket = Ticket::with(['patient.biteIncidents'])
+        $currentTicket = Ticket::with(['patient.biteIncidents', 'nurseAssessment'])
             ->where('assigned_staff_id', $nurse->id)
             ->where('counter_assigned', $station->id)
             ->whereIn('status', ['called', 'in_progress'])
@@ -45,7 +46,10 @@ class NurseStationController extends Controller
                 'number' => $currentTicket->ticket_number,
                 'patient' => $currentTicket->patient?->fullName() ?? 'Patient record unavailable',
                 'patient_url' => $currentTicket->patient ? route('patients.show', $currentTicket->patient) : null,
-                'assessment_url' => route('nurse.station.assessment.complete', $currentTicket),
+                'patient_id' => $currentTicket->patient?->id,
+                'visit' => ucfirst($currentTicket->visit_type),
+                'assessment_form_url' => $currentTicket->service_stage === 'follow_up' ? null : route('nurse.station.assessment.form', $currentTicket),
+                'assessment_status' => $currentTicket->nurseAssessment?->statusLabel() ?? 'Not started',
                 'follow_up' => $currentTicket->service_stage === 'follow_up',
                 'vaccine_url' => $currentTicket->service_stage === 'follow_up' ? route('nurse.station.vaccine.form', $currentTicket) : null,
                 'vaccine_available' => $currentTicket->service_stage === 'follow_up' && $vaccineReason === null,
@@ -74,7 +78,7 @@ class NurseStationController extends Controller
             return redirect()->route('dashboard')->withErrors(['station' => 'Open an available nurse station before reviewing patients.']);
         }
 
-        $currentTicket = Ticket::with(['patient.biteIncidents'])
+        $currentTicket = Ticket::with(['patient.biteIncidents', 'nurseAssessment'])
             ->where('assigned_staff_id', $nurse->id)
             ->where('counter_assigned', $station->id)
             ->whereIn('status', ['called', 'in_progress'])
@@ -89,7 +93,15 @@ class NurseStationController extends Controller
             ->priorityFirst()
             ->paginate(15);
 
-        return view('nurse.station', compact('station', 'waiting', 'currentTicket', 'vaccineReason'));
+        $heldForResume = Ticket::with(['patient', 'nurseAssessment.nurse'])
+            ->where('status', 'held')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereHas('nurseAssessment', fn ($query) => $query->where('status', 'on_hold'))
+            ->priorityFirst()
+            ->limit(10)
+            ->get();
+
+        return view('nurse.station', compact('station', 'waiting', 'currentTicket', 'vaccineReason', 'heldForResume'));
     }
 
     public function callNext(): RedirectResponse
@@ -135,62 +147,6 @@ class NurseStationController extends Controller
         Audit::log('nurse.station.call_next', "Nurse called ticket {$ticket->ticket_number} to {$ticket->counter_assigned} station", $ticket);
 
         return back()->with('status', "Now serving {$ticket->ticket_number}.");
-    }
-
-    public function completeAssessment(Request $request, Ticket $ticket): RedirectResponse
-    {
-        $nurse = request()->user();
-
-        try {
-            DB::transaction(function () use ($ticket, $nurse, $request) {
-                $station = NurseStation::where('user_id', $nurse->id)->lockForUpdate()->first();
-                if (! $station) {
-                    throw ValidationException::withMessages(['station' => 'You must be assigned to a nurse station to assess patients.']);
-                }
-
-                $lockedTicket = Ticket::with('patient.biteIncidents')->lockForUpdate()->findOrFail($ticket->id);
-                if ($lockedTicket->status !== 'in_progress' || $lockedTicket->assigned_staff_id !== $nurse->id
-                    || $lockedTicket->counter_assigned !== $station->id
-                    || ! in_array($lockedTicket->service_stage, ['assessment', 'medical_review'], true)) {
-                    throw ValidationException::withMessages(['assessment' => 'This ticket is not being served at your active nurse station.']);
-                }
-                if ($lockedTicket->assessment_completed_at) {
-                    throw ValidationException::withMessages(['assessment' => 'This assessment has already been completed.']);
-                }
-
-                $data = validator($request->only(['bite_site', 'animal_status', 'animal_vaccinated']), [
-                    'bite_site' => ['required', 'string', 'max:150'],
-                    'animal_status' => ['required', 'in:Healthy,Sick,Dead,Unknown'],
-                    'animal_vaccinated' => ['required', 'boolean'],
-                ])->validate();
-
-                $patient = $lockedTicket->patient;
-                $incident = $patient?->biteIncidents->sortBy('date_of_bite')->first();
-                if (! $patient || ! $incident || ! $patient->first_name || ! $patient->last_name || ! $patient->dob || ! $patient->sex || ! $patient->address || ! $patient->barangay || ! $incident->date_of_bite || ! $incident->animal_type) {
-                    throw ValidationException::withMessages(['assessment' => 'Complete the patient registration, bite incident, and required nursing assessment fields before transferring this patient.']);
-                }
-
-                $incident->update([
-                    'bite_site' => $data['bite_site'],
-                    'animal_status' => $data['animal_status'],
-                    'animal_vaccinated' => (bool) $data['animal_vaccinated'],
-                ]);
-
-                $lockedTicket->update([
-                    'status' => 'waiting',
-                    'assessment_completed_by' => $nurse->id,
-                    'assessment_completed_at' => now(),
-                    'assigned_staff_id' => null,
-                    'counter_assigned' => null,
-                ]);
-
-                Audit::log('nurse.assessment_complete', "Nurse assessment completed for ticket {$lockedTicket->ticket_number}", $lockedTicket);
-            });
-        } catch (ValidationException $exception) {
-            return back()->withErrors($exception->errors())->withInput($request->only(['bite_site', 'animal_status', 'animal_vaccinated']));
-        }
-
-        return back()->with('status', "Nurse assessment completed for {$ticket->ticket_number}. It is now available to the Doctor queue.");
     }
 
     public function vaccineForm(Ticket $ticket): View|RedirectResponse
@@ -293,34 +249,12 @@ class NurseStationController extends Controller
 
     private function vaccineAuthorizationError(?Patient $patient, ?VaccinationSchedule $schedule): ?string
     {
-        if (! $patient || ! $schedule || $schedule->patient_id !== $patient->id) return 'No vaccination dose is linked to this patient ticket.';
-        if (! $patient->vaccine_type || $this->isImmunoglobulin($patient->vaccine_type)) return 'A valid doctor-ordered vaccine plan is required before administration.';
-        $doseNumbers = $patient->vaccinationSchedules->pluck('dose_number');
-        if (! in_array((int) $patient->planned_dose_count, [3, 4], true)
-            || $doseNumbers->count() !== (int) $patient->planned_dose_count
-            || $doseNumbers->unique()->count() !== (int) $patient->planned_dose_count
-            || ! $doseNumbers->contains($schedule->dose_number)
-            || $schedule->dose_number > (int) $patient->planned_dose_count
-            || ! $patient->biteIncidents->contains(fn ($incident) => filled($incident->exposure_category))) {
-            return 'The doctor must complete the exposure category and provider-ordered vaccine schedule before administration.';
-        }
-        if (! in_array($schedule->status, ['scheduled', 'missed'], true)) return 'This dose is already administered or is not available.';
-        if ($schedule->scheduled_date->gt(today())) return 'This dose is not due yet.';
-        if (VaccinationSchedule::where('patient_id', $patient->id)->where('dose_number', '<', $schedule->dose_number)
-            ->where('status', '!=', 'administered')->exists()) return 'Earlier doses must be administered first.';
-        return null;
+        return VaccineAuthorization::planError($patient, $schedule);
     }
 
     private function vaccineActionBlockReason(Ticket $ticket): ?string
     {
-        $patient = $ticket->patient;
-        $schedule = $ticket->vaccinationSchedule;
-        if ($reason = $this->vaccineAuthorizationError($patient, $schedule)) return $reason;
-        if (! config('vaccination.administration_routes.'.$patient->vaccine_type)) return 'The clinic has no approved route configured for this prescribed vaccine.';
-        if (! config('vaccination.administration_sites', [])) return 'Clinic-approved administration sites are not configured.';
-        $hasBatch = VaccineInventory::where('vaccine_name', $patient->vaccine_type)
-            ->where('quantity', '>', 0)->whereDate('expiration_date', '>=', today())->exists();
-        return $hasBatch ? null : 'No matching unexpired vaccine batch has stock available.';
+        return VaccineAuthorization::administrationBlockReason($ticket);
     }
 
     private function constrainNurseQueue($query)
@@ -355,7 +289,7 @@ class NurseStationController extends Controller
 
     private function isImmunoglobulin(string $productName): bool
     {
-        return (bool) preg_match('/\\b(?:equi[\\s-]?rab|(?:human|equine)\\s+rabies\\s+(?:immunoglobulin|serum)|anti[- ]rabies\\s+serum|rabies\\s+(?:immunoglobulin|immune\\s+globulin)|(?:hrig|erig|rig))\\b/i', $productName);
+        return VaccineAuthorization::isImmunoglobulin($productName);
     }
 
     public function assign(NurseStation $station): RedirectResponse
