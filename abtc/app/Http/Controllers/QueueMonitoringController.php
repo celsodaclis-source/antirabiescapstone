@@ -18,13 +18,21 @@ class QueueMonitoringController extends Controller
             'stats' => $data['stats'],
             'nurseStations' => collect($data['nurse_stations']),
             'doctorStations' => collect($data['doctor_stations']),
+            'nowServing' => $data['now_serving'],
+            'waiting' => $data['waiting'],
+            'waitingPaginator' => $data['waiting_paginator'],
+            'held' => $data['held'],
+            'servedToday' => $data['served_today'],
             'updated_at' => $data['updated_at'],
         ]);
     }
 
     public function data(): JsonResponse
     {
-        return response()->json($this->snapshot());
+        $snapshot = $this->snapshot();
+        unset($snapshot['waiting_paginator']);
+
+        return response()->json($snapshot);
     }
 
     /** Current, read-only view of the shared ticket and station records. */
@@ -54,6 +62,23 @@ class QueueMonitoringController extends Controller
             ->with(['assignedStaff:id,name,role'])
             ->whereIn('status', $activeStatuses)
             ->orderBy('called_at')
+            ->get();
+
+        $waitingTickets = Ticket::query()
+            ->with(['patient', 'vaccinationSchedule'])
+            ->where('status', 'waiting')
+            ->priorityFirst()
+            ->paginate(10, ['*'], 'queue_page');
+        $heldTickets = Ticket::query()
+            ->with(['patient', 'vaccinationSchedule', 'assignedStaff'])
+            ->where('status', 'held')
+            ->orderBy('updated_at')
+            ->get();
+        $servedTickets = Ticket::query()
+            ->with(['patient', 'assignedStaff'])
+            ->where('status', 'completed')
+            ->whereDate('completed_at', now()->toDateString())
+            ->orderByDesc('completed_at')
             ->get();
 
         $nurseStations = NurseStation::query()->with('nurse:id,name,role')->orderBy('id')->get();
@@ -106,7 +131,37 @@ class QueueMonitoringController extends Controller
             ],
             'nurse_stations' => $nurseStations,
             'doctor_stations' => $doctorStations,
+            'now_serving' => $activeTickets->map(fn (Ticket $ticket) => $this->queueRow($ticket))->values(),
+            'waiting' => [
+                'data' => $waitingTickets->getCollection()->map(fn (Ticket $ticket) => $this->queueRow($ticket))->values(),
+                'total' => $waitingTickets->total(),
+                'from' => $waitingTickets->firstItem(),
+                'to' => $waitingTickets->lastItem(),
+                'current_page' => $waitingTickets->currentPage(),
+                'last_page' => $waitingTickets->lastPage(),
+            ],
+            'waiting_paginator' => $waitingTickets,
+            'held' => $heldTickets->map(fn (Ticket $ticket) => $this->queueRow($ticket))->values(),
+            'served_today' => $servedTickets->map(fn (Ticket $ticket) => $this->queueRow($ticket))->values(),
             'updated_at' => now()->toIso8601String(),
+        ];
+    }
+
+    private function queueRow(Ticket $ticket): array
+    {
+        return [
+            'id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+            'patient_name' => $ticket->patient?->fullName() ?? 'Patient record unavailable',
+            'patient_type' => $ticket->patient?->patientTypeLabel() ?? '',
+            'is_priority' => $ticket->is_priority,
+            'visit_type' => ucfirst($ticket->visit_type),
+            'service_stage' => str_replace('_', ' ', ucfirst($ticket->service_stage)),
+            'dose_number' => $ticket->vaccinationSchedule?->dose_number,
+            'counter' => $ticket->counter_assigned,
+            'assigned_staff' => $ticket->assignedStaff?->name,
+            'status' => $ticket->status,
+            'completed_time' => $ticket->completed_at?->format('h:i A'),
         ];
     }
 }

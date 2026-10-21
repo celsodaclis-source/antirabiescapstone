@@ -43,7 +43,8 @@ class QueueMonitoringTest extends TestCase
         ]);
 
         $this->actingAs($admin)->get(route('queue-monitoring.index'))->assertOk()
-            ->assertSee('Queue Monitoring')->assertSee('NURSE-SERVE')->assertSee('DOCTOR-SERVE');
+            ->assertSee('Queue Monitoring')->assertSee('NURSE-SERVE')->assertSee('DOCTOR-SERVE')
+            ->assertSee('Now Serving')->assertSee('Waiting')->assertSee('On Hold')->assertSee('Served Today');
 
         $this->get(route('queue-monitoring.data'))->assertOk()->assertJsonPath('stats.nurse_waiting', 1)
             ->assertJsonPath('stats.doctor_waiting', 1)
@@ -51,6 +52,8 @@ class QueueMonitoringTest extends TestCase
             ->assertJsonPath('stats.doctor_serving', 1)
             ->assertJsonPath('nurse_stations.0.ticket', $nurseServing->ticket_number)
             ->assertJsonPath('doctor_stations.1.ticket', $doctorServing->ticket_number)
+            ->assertJsonPath('now_serving.0.ticket_number', $nurseServing->ticket_number)
+            ->assertJsonPath('waiting.total', 2)
             ->assertJsonPath('nurse_stations.1.status', 'Idle');
 
         $this->assertSame('waiting', $nurseWaiting->fresh()->status);

@@ -43,8 +43,12 @@ class QueueController extends Controller
         return redirect()->route('schedules.index')->with('status', "Returning patient queued as {$ticket->ticket_number} for dose {$schedule->dose_number}.");
     }
 
-    public function index(): View
+    public function index(): View|RedirectResponse
     {
+        if (request()->user()?->role === 'Admin') {
+            return redirect()->route('queue-monitoring.index');
+        }
+
         $nowServing = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->whereIn('status', ['called', 'in_progress'])
             ->orderBy('called_at')

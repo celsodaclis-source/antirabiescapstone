@@ -58,7 +58,7 @@
                             ['queue.index', 'Patient Queue', 'queue.*', 'queue'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : [
                             ['dashboard', 'Home', 'dashboard', 'home'], ['queue-monitoring.index', 'Queue Monitoring', 'queue-monitoring.*', 'queue'], ['patients.index', 'Patients', 'patients.*', 'users'],
-                            ['queue.index', 'Queue', 'queue.*', 'queue'], ['inventory.index', 'Inventory', 'inventory.*', 'inventory'],
+                            ['inventory.index', 'Inventory', 'inventory.*', 'inventory'],
                             ['reports.index', 'Reports', 'reports.*', 'reports'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                             ['sms.index', 'SMS', 'sms.*', 'message'],
                         ]));
