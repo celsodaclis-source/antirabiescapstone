@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\DoctorStation;
+use App\Models\Patient;
 use App\Models\VaccinationSchedule;
 use App\Services\Audit;
 use App\Services\QueueTicketNumber;
@@ -121,18 +123,50 @@ class QueueController extends Controller
     {
         $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
         $counter = (int) ($data['counter'] ?? 1);
+        $actor = $request->user();
 
-        [$next, $message] = DB::transaction(function () use ($counter) {
+        [$next, $message] = DB::transaction(function () use ($counter, $actor) {
+            $station = null;
+            if ($actor->role === 'Doctor') {
+                $station = DoctorStation::where('user_id', $actor->id)->lockForUpdate()->first();
+                if (! $station) return [null, 'Open an assigned doctor station before calling a patient.'];
+                $counter = $station->id;
+
+                $activeForDoctor = Ticket::where('assigned_staff_id', $actor->id)
+                    ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+                if ($activeForDoctor) return [null, "Complete or resolve {$activeForDoctor->ticket_number} before calling another patient."];
+            }
+
             $already = Ticket::where('counter_assigned', $counter)
                 ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
             if ($already) return [null, "Counter {$counter} is already serving {$already->ticket_number}."];
 
-            $next = Ticket::where('status', 'waiting')->priorityFirst()->lockForUpdate()->first();
+            $nextQuery = Ticket::where('status', 'waiting');
+            if ($actor->role === 'Doctor') {
+                $nextQuery->where(function ($query) {
+                    $query->where(function ($consultation) {
+                        $consultation->whereIn('service_stage', ['assessment', 'medical_review'])
+                            ->whereNotNull('assessment_completed_at');
+                    })->orWhere('service_stage', 'follow_up');
+                })->whereDoesntHave('patient.tickets', function ($query) {
+                    $query->whereIn('status', ['called', 'in_progress']);
+                });
+            }
+
+            $next = $nextQuery->priorityFirst()->lockForUpdate()->first();
             if (! $next) return [null, 'No waiting tickets in the queue.'];
+
+            if ($actor->role === 'Doctor') {
+                Patient::whereKey($next->patient_id)->lockForUpdate()->firstOrFail();
+                if (Ticket::where('patient_id', $next->patient_id)->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->exists()) {
+                    return [null, 'This patient already has an active consultation with a doctor.'];
+                }
+            }
 
             $next->update([
                 'status' => 'called', 'counter_assigned' => $counter,
                 'assigned_staff_id' => auth()->id(), 'called_at' => now(),
+                'doctor_station_id' => $station?->id,
             ]);
             return [$next, null];
         });
@@ -147,11 +181,31 @@ class QueueController extends Controller
     {
         $data = $request->validate(['counter' => ['sometimes', 'integer', 'between:1,4']]);
         $counter = (int) ($data['counter'] ?? $ticket->counter_assigned ?? 1);
+        $actor = $request->user();
 
-        $message = DB::transaction(function () use ($ticket, $counter) {
+        $message = DB::transaction(function () use ($ticket, $counter, $actor) {
+            $station = null;
+            if ($actor->role === 'Doctor') {
+                $station = DoctorStation::where('user_id', $actor->id)->lockForUpdate()->first();
+                if (! $station) return 'Open an assigned doctor station before calling a patient.';
+                $counter = $station->id;
+            }
             $lockedTicket = Ticket::lockForUpdate()->findOrFail($ticket->id);
             if ($lockedTicket->status !== 'held') {
                 return "Ticket {$lockedTicket->ticket_number} cannot be called (status: {$lockedTicket->status}).";
+            }
+            if ($actor->role === 'Doctor') {
+                if ($lockedTicket->service_stage !== 'follow_up' && ! $lockedTicket->assessment_completed_at) {
+                    return 'A nurse must complete the patient assessment before the doctor can call this ticket.';
+                }
+                $activeForDoctor = Ticket::where('assigned_staff_id', $actor->id)
+                    ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
+                if ($activeForDoctor) return "Complete or resolve {$activeForDoctor->ticket_number} before calling another patient.";
+
+                Patient::whereKey($lockedTicket->patient_id)->lockForUpdate()->firstOrFail();
+                if (Ticket::where('patient_id', $lockedTicket->patient_id)->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->exists()) {
+                    return 'This patient already has an active consultation with a doctor.';
+                }
             }
             $already = Ticket::where('counter_assigned', $counter)
                 ->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->first();
@@ -160,6 +214,7 @@ class QueueController extends Controller
             $lockedTicket->update([
                 'status' => 'called', 'counter_assigned' => $counter,
                 'assigned_staff_id' => auth()->id(), 'called_at' => now(),
+                'doctor_station_id' => $station?->id,
             ]);
             return null;
         });
@@ -172,14 +227,29 @@ class QueueController extends Controller
 
     public function serve(Ticket $ticket): RedirectResponse
     {
-        if (! in_array($ticket->status, ['called', 'in_progress'], true)) {
-            return back()->with('status', 'Ticket must be called before serving.');
-        }
+        $message = DB::transaction(function () use ($ticket) {
+            $station = null;
+            if (auth()->user()->role === 'Doctor') {
+                $station = DoctorStation::where('user_id', auth()->id())->lockForUpdate()->first();
+                if (! $station) return 'Open an assigned doctor station before serving a patient.';
+            }
+            $lockedTicket = Ticket::lockForUpdate()->findOrFail($ticket->id);
+            if (! in_array($lockedTicket->status, ['called', 'in_progress'], true)) {
+                return 'Ticket must be called before serving.';
+            }
+            if (auth()->user()->role === 'Doctor') {
+                if (! $station || $lockedTicket->assigned_staff_id !== auth()->id() || $lockedTicket->doctor_station_id !== $station->id) {
+                    return 'This ticket is not assigned to your active doctor station.';
+                }
+            }
 
-        $ticket->update([
-            'status' => 'in_progress',
-            'served_at' => $ticket->served_at ?? now(),
-        ]);
+            $lockedTicket->update([
+                'status' => 'in_progress',
+                'served_at' => $lockedTicket->served_at ?? now(),
+            ]);
+            return null;
+        });
+        if ($message) return back()->withErrors(['ticket' => $message]);
 
         Audit::log('queue.serve', "Started serving ticket {$ticket->ticket_number}", $ticket);
 
@@ -191,11 +261,17 @@ class QueueController extends Controller
         if (! in_array($ticket->status, ['waiting', 'called', 'in_progress'])) {
             return back()->with('status', 'Ticket cannot be held.');
         }
+        if (auth()->user()->role === 'Doctor'
+            && ($ticket->assigned_staff_id !== auth()->id() || ! $ticket->doctor_station_id
+                || ! DoctorStation::where('id', $ticket->doctor_station_id)->where('user_id', auth()->id())->exists())) {
+            return back()->withErrors(['ticket' => 'This ticket is not assigned to your active doctor station.']);
+        }
 
         $ticket->update([
             'status' => 'held',
             'counter_assigned' => null,
             'assigned_staff_id' => null,
+            'doctor_station_id' => null,
         ]);
 
         Audit::log('queue.hold', "Held ticket {$ticket->ticket_number}", $ticket);
@@ -205,18 +281,43 @@ class QueueController extends Controller
 
     public function complete(Ticket $ticket): RedirectResponse
     {
-        if (! in_array($ticket->status, ['called', 'in_progress'], true)) {
-            return back()->with('status', 'Only a called or currently serving ticket can be completed.');
-        }
-        if ($ticket->vaccination_schedule_id && $ticket->vaccinationSchedule?->status !== 'administered') {
-            return back()->with('status', 'Administer the linked dose before completing this follow-up ticket.');
-        }
-        $ticket->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
+        $doctor = auth()->user()->role === 'Doctor';
+        $message = DB::transaction(function () use ($ticket, $doctor) {
+            $station = $doctor ? DoctorStation::where('user_id', auth()->id())->lockForUpdate()->first() : null;
+            $lockedTicket = Ticket::with(['vaccinationSchedule', 'patient.biteIncidents', 'patient.vaccinationSchedules'])
+                ->lockForUpdate()->findOrFail($ticket->id);
+            if (! in_array($lockedTicket->status, $doctor ? ['in_progress'] : ['called', 'in_progress'], true)) {
+                return $lockedTicket->status === 'completed'
+                    ? 'This queue ticket has already been completed.'
+                    : 'Only a currently serving ticket can be completed.';
+            }
+            if ($doctor) {
+                $stationMatches = $station && $lockedTicket->assigned_staff_id === auth()->id()
+                    && ($lockedTicket->doctor_station_id === $station->id
+                        || ($lockedTicket->doctor_station_id === null && $lockedTicket->counter_assigned === $station->id));
+                if (! $stationMatches) return 'This ticket is not assigned to your active doctor station.';
 
-        Audit::log('queue.complete', "Completed ticket {$ticket->ticket_number}", $ticket);
+                if ($lockedTicket->service_stage !== 'follow_up' && ! $lockedTicket->assessment_completed_at) {
+                    return 'A nurse must complete the patient assessment before consultation can be completed.';
+                }
+                $patient = $lockedTicket->patient;
+                $incident = $patient?->biteIncidents->sortBy('date_of_bite')->first();
+                $doseCount = (int) $patient?->planned_dose_count;
+                if (! $incident?->exposure_category || ! $patient?->vaccine_type || ! in_array($doseCount, [3, 4], true)
+                    || $patient->vaccinationSchedules->count() !== $doseCount) {
+                    return 'Complete the exposure assessment and provider-ordered vaccination plan before completing this consultation.';
+                }
+            }
+            if ($lockedTicket->vaccination_schedule_id && $lockedTicket->vaccinationSchedule?->status !== 'administered') {
+                return 'Administer the linked dose before completing this follow-up ticket.';
+            }
+
+            $lockedTicket->update(['status' => 'completed', 'completed_at' => now()]);
+            Audit::log('queue.complete', "Completed ticket {$lockedTicket->ticket_number}", $lockedTicket);
+            return null;
+        });
+
+        if ($message) return back()->withErrors(['ticket' => $message]);
 
         return back()->with('status', "Ticket {$ticket->ticket_number} completed.");
     }

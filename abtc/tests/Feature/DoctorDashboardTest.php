@@ -34,12 +34,12 @@ class DoctorDashboardTest extends TestCase
         $this->assertSame(4, substr_count($response->getContent(), '<article class="rounded-2xl'));
 
         $this->actingAs($doctor)->post(route('doctor.stations.assign', $station))
-            ->assertRedirect(route('dashboard'))->assertSessionHas('status');
+            ->assertRedirect(route('doctor.station.show'))->assertSessionHas('status');
         $this->assertDatabaseHas('doctor_stations', ['id' => $station->id, 'user_id' => $doctor->id]);
         $this->actingAs($otherDoctor)->get(route('dashboard'))->assertOk()
             ->assertSee('Assigned to another doctor')->assertSee('In Use');
         $this->actingAs($doctor);
-        $this->get(route('dashboard'))->assertOk()->assertSee('On Duty')->assertSee('Go to Patient Queue')->assertSee('Doctor 1');
+        $this->get(route('dashboard'))->assertOk()->assertSee('On Duty')->assertSee('Open Doctor Station')->assertSee('Doctor 1');
     }
 
     public function test_doctor_station_cannot_be_shared_or_duplicated_and_roles_are_enforced(): void

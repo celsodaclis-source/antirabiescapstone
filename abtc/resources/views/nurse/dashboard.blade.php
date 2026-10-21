@@ -20,10 +20,10 @@
         @if ($assignedStation)
             <div class="mb-6 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <p class="text-sm text-emerald-900">You are assigned to <strong>{{ $assignedStation->name }}</strong>.</p>
-                <form method="POST" action="{{ route('nurse.stations.release') }}">
-                    @csrf @method('DELETE')
-                    <button class="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">Leave Station</button>
-                </form>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('nurse.station.show') }}" class="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Open Nurse Station</a>
+                    <form method="POST" action="{{ route('nurse.stations.release') }}">@csrf @method('DELETE')<button class="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100">Leave Station</button></form>
+                </div>
             </div>
         @endif
 

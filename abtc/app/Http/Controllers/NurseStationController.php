@@ -3,12 +3,73 @@
 namespace App\Http\Controllers;
 
 use App\Models\NurseStation;
+use App\Models\Ticket;
+use App\Services\Audit;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class NurseStationController extends Controller
 {
+    public function show(): View|RedirectResponse
+    {
+        $nurse = request()->user();
+        $station = NurseStation::where('user_id', $nurse->id)->first();
+        if (! $station) {
+            return redirect()->route('dashboard')->withErrors(['station' => 'Open an available nurse station before reviewing patients.']);
+        }
+
+        $waiting = Ticket::with(['patient.biteIncidents', 'assessmentCompletedBy'])
+            ->where('status', 'waiting')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereNull('assessment_completed_at')
+            ->priorityFirst()
+            ->paginate(15);
+
+        return view('nurse.station', compact('station', 'waiting'));
+    }
+
+    public function completeAssessment(Ticket $ticket): RedirectResponse
+    {
+        $nurse = request()->user();
+
+        try {
+            DB::transaction(function () use ($ticket, $nurse) {
+                $station = NurseStation::where('user_id', $nurse->id)->lockForUpdate()->first();
+                if (! $station) {
+                    throw ValidationException::withMessages(['station' => 'You must be assigned to a nurse station to assess patients.']);
+                }
+
+                $lockedTicket = Ticket::with('patient.biteIncidents')->lockForUpdate()->findOrFail($ticket->id);
+                if ($lockedTicket->status !== 'waiting' || ! in_array($lockedTicket->service_stage, ['assessment', 'medical_review'], true)) {
+                    throw ValidationException::withMessages(['assessment' => 'This ticket is no longer waiting for a nurse assessment.']);
+                }
+                if ($lockedTicket->assessment_completed_at) {
+                    throw ValidationException::withMessages(['assessment' => 'This assessment has already been completed.']);
+                }
+
+                $patient = $lockedTicket->patient;
+                $incident = $patient?->biteIncidents->sortBy('date_of_bite')->first();
+                if (! $patient || ! $incident || ! $patient->first_name || ! $patient->last_name || ! $patient->dob || ! $patient->sex || ! $patient->address || ! $patient->barangay || ! $incident->date_of_bite || ! $incident->animal_type) {
+                    throw ValidationException::withMessages(['assessment' => 'The patient registration and bite incident record must be complete before assessment can be marked complete.']);
+                }
+
+                $lockedTicket->update([
+                    'assessment_completed_by' => $nurse->id,
+                    'assessment_completed_at' => now(),
+                ]);
+
+                Audit::log('nurse.assessment_complete', "Nurse assessment completed for ticket {$lockedTicket->ticket_number}", $lockedTicket);
+            });
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
+
+        return back()->with('status', "Nurse assessment completed for {$ticket->ticket_number}. It is now available to the Doctor queue.");
+    }
+
     public function assign(NurseStation $station): RedirectResponse
     {
         $user = request()->user();
@@ -49,7 +110,7 @@ class NurseStationController extends Controller
             $station?->update(['user_id' => null]);
         });
 
-        return back()->with('status', 'You are off duty and your station is available.');
+        return redirect()->route('dashboard')->with('status', 'You are off duty and your station is available.');
     }
 }
 

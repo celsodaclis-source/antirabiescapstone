@@ -28,9 +28,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{station}/assign', [NurseStationController::class, 'assign'])->name('assign');
         Route::delete('/release', [NurseStationController::class, 'release'])->name('release');
     });
+    Route::middleware('role:Nurse')->prefix('nurse/station')->name('nurse.station.')->group(function () {
+        Route::get('/', [NurseStationController::class, 'show'])->name('show');
+        Route::post('/tickets/{ticket}/assessment', [NurseStationController::class, 'completeAssessment'])->name('assessment.complete');
+    });
     Route::middleware('role:Doctor')->prefix('doctor/stations')->name('doctor.stations.')->group(function () {
         Route::post('/{station}/assign', [DoctorStationController::class, 'assign'])->name('assign');
         Route::delete('/release', [DoctorStationController::class, 'release'])->name('release');
+    });
+    Route::middleware('role:Doctor')->prefix('doctor/station')->name('doctor.station.')->group(function () {
+        Route::get('/', [DoctorStationController::class, 'show'])->name('show');
+        Route::post('/call-next', [DoctorStationController::class, 'callNext'])->name('call-next');
+        Route::post('/tickets/{ticket}/complete', [DoctorStationController::class, 'complete'])->name('complete');
     });
 
     // Patient Registration & Records

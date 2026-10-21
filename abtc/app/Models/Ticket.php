@@ -14,6 +14,8 @@ class Ticket extends Model
     protected $fillable = [
         'patient_id', 'ticket_number', 'status', 'counter_assigned',
         'assigned_staff_id', 'called_at', 'served_at', 'completed_at',
+        'assessment_completed_by', 'assessment_completed_at',
+        'doctor_station_id',
         'is_priority', 'visit_type', 'service_stage', 'vaccination_schedule_id',
     ];
 
@@ -22,6 +24,7 @@ class Ticket extends Model
         'served_at' => 'datetime',
         'completed_at' => 'datetime',
         'is_priority' => 'boolean',
+        'assessment_completed_at' => 'datetime',
     ];
 
     /**
@@ -40,6 +43,16 @@ class Ticket extends Model
     public function assignedStaff()
     {
         return $this->belongsTo(User::class, 'assigned_staff_id');
+    }
+
+    public function assessmentCompletedBy()
+    {
+        return $this->belongsTo(User::class, 'assessment_completed_by');
+    }
+
+    public function doctorStation()
+    {
+        return $this->belongsTo(DoctorStation::class);
     }
 
     public function vaccinationSchedule()
