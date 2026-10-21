@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="header">Queue Management</x-slot>
+    <x-slot name="header">Queue</x-slot>
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
             <div><h2 class="font-semibold text-slate-900">Waiting Queue ({{ $waiting->count() }})</h2><p class="mt-1 text-sm text-slate-600">Tickets are ordered using the system’s existing priority and queue rules.</p></div>

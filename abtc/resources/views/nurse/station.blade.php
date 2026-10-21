@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-slot name="header">{{ $station->name }}</x-slot>
+    <x-slot name="header">{{ $station->name }} — My Queue</x-slot>
 
     <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $station->name }}</h1>
+                <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ $station->name }} — My Queue</h1>
                 <p class="mt-1 text-sm text-slate-600">Patient registration review and assessment queue</p>
             </div>
             <span class="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Station Active</span>

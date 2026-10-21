@@ -1,11 +1,11 @@
 <x-app-layout>
-    <x-slot name="header">{{ $station->name }} — Consultation</x-slot>
+    <x-slot name="header">{{ $station->name }} — My Queue</x-slot>
 
     <div id="doctor-station-live" data-current-ticket-id="{{ $currentTicket?->id ?? '' }}" data-current-status="{{ $currentTicket?->status ?? '' }}" data-plan-ready="{{ $planReady ? '1' : '0' }}" class="mx-auto max-w-6xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
         <header class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900">Doctor Station {{ str($station->name)->after('Doctor ')->toString() }}</h1>
+                    <h1 class="text-xl font-bold text-slate-900">{{ $station->name }} — My Queue</h1>
                     <p class="mt-1 text-sm text-slate-600">Consultation and patient queue management</p>
                 </div>
                 <span class="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Station Active</span>

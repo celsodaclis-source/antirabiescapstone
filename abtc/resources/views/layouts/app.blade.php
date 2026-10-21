@@ -48,13 +48,15 @@
                             ['staff.patients.create', 'Patient Registration', 'staff.patients.create', 'users'],
                             ['staff.patients.search', 'Patient Search', 'staff.patients.search', 'users'],
                             ['staff.tickets.create', 'Create Ticket', 'staff.tickets.*', 'queue'],
-                            ['staff.queue.index', 'Queue Management', 'staff.queue.*', 'queue'],
+                            ['queue.index', 'Queue', 'queue.*', 'queue'],
                         ] : ($isNurse ? [
                             ['dashboard', 'Nurse Dashboard', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['nurse.station.show', 'My Queue', 'nurse.station.*', 'queue'],
                             ['inventory.index', 'Inventory', 'inventory.*', 'inventory'], ['reports.index', 'Reports', 'reports.*', 'reports'],
                             ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : (Auth::user()->role === 'Doctor' ? [
                             ['dashboard', 'Doctor Dashboard', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['doctor.station.show', 'My Queue', 'doctor.station.*', 'queue'],
                             ['queue.index', 'Patient Queue', 'queue.*', 'queue'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : [
                             ['dashboard', 'Home', 'dashboard', 'home'], ['queue-monitoring.index', 'Queue Monitoring', 'queue-monitoring.*', 'queue'], ['patients.index', 'Patients', 'patients.*', 'users'],

@@ -66,7 +66,7 @@ class DoctorStationWorkflowTest extends TestCase
         $doctorStation = DoctorStation::where('name', 'Doctor 1')->firstOrFail();
         $this->actingAs($doctor)->post(route('doctor.stations.assign', $doctorStation))->assertRedirect(route('doctor.station.show'));
         $this->get(route('doctor.station.show'))->assertOk()
-            ->assertSee('Doctor Station 1')->assertSee('Doctor Waiting')->assertSee($ticket->ticket_number)
+            ->assertSee('Doctor 1 — My Queue')->assertSee('My Queue')->assertSee('Doctor Waiting')->assertSee($ticket->ticket_number)
             ->assertSee('Nurse Assessment')->assertSee('Completed');
         $this->get(route('doctor.station.data'))->assertOk()->assertJsonPath('waiting_count', 1)
             ->assertJsonPath('waiting.0.ticket_number', $ticket->ticket_number);

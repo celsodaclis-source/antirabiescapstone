@@ -55,9 +55,10 @@
                             ['staff.patients.create', 'Patient Registration', 'staff.patients.create', 'users'],
                             ['staff.patients.search', 'Patient Search', 'staff.patients.search', 'users'],
                             ['staff.tickets.create', 'Create Ticket', 'staff.tickets.*', 'queue'],
-                            ['staff.queue.index', 'Queue Management', 'staff.queue.*', 'queue'],
+                            ['queue.index', 'Queue', 'queue.*', 'queue'],
                         ] : ($isNurse ? [
                             ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['nurse.station.show', 'My Queue', 'nurse.station.*', 'queue'],
                             ['inventory.index', 'Inventory', 'inventory.*', 'inventory'], ['reports.index', 'Reports', 'reports.*', 'reports'],
                             ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                         ] : ($isAdmin ? [
@@ -66,6 +67,7 @@
                             ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'], ['sms.index', 'SMS', 'sms.*', 'message'],
                         ] : [
                             ['dashboard', 'Home', 'dashboard', 'home'], ['patients.index', 'Patients', 'patients.*', 'users'],
+                            ['doctor.station.show', 'My Queue', 'doctor.station.*', 'queue'],
                             ['queue.index', 'Queue', 'queue.*', 'queue'], ['inventory.index', 'Inventory', 'inventory.*', 'inventory'],
                             ['reports.index', 'Reports', 'reports.*', 'reports'], ['schedules.index', 'Vaccination', 'schedules.*', 'vaccine'],
                             ['sms.index', 'SMS', 'sms.*', 'message'],

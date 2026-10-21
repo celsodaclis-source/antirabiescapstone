@@ -237,9 +237,11 @@ class StaffAccessTest extends TestCase
     public function test_staff_cannot_access_admin_or_clinical_modules_and_can_log_out(): void
     {
         $this->actingAs($this->staff);
-        foreach (['dashboard', 'patients.index', 'queue.index', 'inventory.index', 'reports.index', 'schedules.index', 'sms.index', 'files.index', 'settings.index', 'settings.users'] as $name) {
+        foreach (['dashboard', 'patients.index', 'inventory.index', 'reports.index', 'schedules.index', 'sms.index', 'settings.index', 'settings.users'] as $name) {
             $this->get(route($name))->assertForbidden();
         }
+        $this->get(route('queue.index'))->assertOk()->assertSee('Ticket Queue Management');
+        $this->get(route('queue-monitoring.index'))->assertForbidden();
         $this->get(route('profile.edit'))->assertOk();
 
         $this->post(route('logout'))->assertRedirect('/');

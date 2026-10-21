@@ -10,10 +10,10 @@
             <a href="{{ route('staff.patients.create') }}" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Patients Registered Today</p><p class="mt-1 text-3xl font-bold">{{ $patientsToday }}</p>
             </a>
-            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md">
+            <a href="{{ route('queue.index') }}" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Waiting Patients</p><p class="mt-1 text-3xl font-bold">{{ $waitingCount }}</p>
             </a>
-            <a href="{{ route('staff.queue.index') }}" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md">
+            <a href="{{ route('queue.index') }}" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md">
                 <p class="text-sm font-medium text-slate-600">Currently Called or Serving</p><p class="mt-1 text-3xl font-bold">{{ $servingCount }}</p>
             </a>
         </div>
@@ -24,7 +24,7 @@
         </div>
 
         <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div class="mb-3 flex items-center justify-between"><h3 class="font-semibold">Active Tickets</h3><a href="{{ route('staff.queue.index') }}" class="text-sm font-semibold text-[#176b9c] hover:underline">Waiting queue →</a></div>
+            <div class="mb-3 flex items-center justify-between"><h3 class="font-semibold">Active Tickets</h3><a href="{{ route('queue.index') }}" class="text-sm font-semibold text-[#176b9c] hover:underline">Waiting queue →</a></div>
             <div class="divide-y divide-slate-100">
                 @forelse ($recentTickets as $ticket)
                     <div class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">

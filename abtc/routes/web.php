@@ -59,19 +59,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/patients/export/csv', [PatientController::class, 'exportCsv'])->name('patients.export.csv');
     });
 
-    // Ticket Queue Management
-    Route::middleware('role:Admin,Doctor')->group(function () {
-    Route::prefix('queue')->name('queue.')->group(function () {
-        Route::get('/', [QueueController::class, 'index'])->name('index');
-        Route::get('/data', [QueueController::class, 'data'])->name('data'); // polling endpoint
-        Route::post('/call-next', [QueueController::class, 'callNext'])->name('call-next');
-        Route::post('/call/{ticket}', [QueueController::class, 'callSpecific'])->name('call');
-        Route::post('/hold/{ticket}', [QueueController::class, 'hold'])->name('hold');
-        Route::post('/complete/{ticket}', [QueueController::class, 'complete'])->name('complete');
-        Route::post('/serve/{ticket}', [QueueController::class, 'serve'])->name('serve');
-    });
-    });
-
     // Vaccination Scheduling & Dose Monitoring
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
@@ -137,6 +124,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/backup/{backup}', [BackupController::class, 'destroy'])->name('backup.destroy');
     });
 
+    });
+
+    // Shared Ticket Queue Management for Admin, Doctor, and Staff.
+    Route::middleware('role:Admin,Doctor,Staff')->prefix('queue')->name('queue.')->group(function () {
+        Route::get('/', [QueueController::class, 'index'])->name('index');
+        Route::get('/data', [QueueController::class, 'data'])->name('data');
+        Route::post('/call-next', [QueueController::class, 'callNext'])->name('call-next');
+        Route::post('/call/{ticket}', [QueueController::class, 'callSpecific'])->name('call');
+        Route::post('/hold/{ticket}', [QueueController::class, 'hold'])->name('hold');
+        Route::post('/complete/{ticket}', [QueueController::class, 'complete'])->name('complete');
+        Route::post('/serve/{ticket}', [QueueController::class, 'serve'])->name('serve');
     });
 
     // Clinical assessment: vaccination plan (Doctors only)

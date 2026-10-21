@@ -41,6 +41,8 @@ class QueueMonitoringTest extends TestCase
             'assessment_completed_by' => $nurse->id,
             'assessment_completed_at' => now(),
         ]);
+        $held = $this->ticket('HELD-001', 'held', 'assessment');
+        $served = $this->ticket('SERVED-001', 'completed', 'assessment', ['completed_at' => now()]);
 
         $this->actingAs($admin)->get(route('queue-monitoring.index'))->assertOk()
             ->assertSee('Queue Monitoring')->assertSee('NURSE-SERVE')->assertSee('DOCTOR-SERVE')
@@ -50,10 +52,16 @@ class QueueMonitoringTest extends TestCase
             ->assertJsonPath('stats.doctor_waiting', 1)
             ->assertJsonPath('stats.nurse_serving', 1)
             ->assertJsonPath('stats.doctor_serving', 1)
+            ->assertJsonPath('stats.on_hold', 1)
+            ->assertJsonPath('stats.served_today', 1)
             ->assertJsonPath('nurse_stations.0.ticket', $nurseServing->ticket_number)
             ->assertJsonPath('doctor_stations.1.ticket', $doctorServing->ticket_number)
             ->assertJsonPath('now_serving.0.ticket_number', $nurseServing->ticket_number)
-            ->assertJsonPath('waiting.total', 2)
+            ->assertJsonPath('stats.now_serving', 2)
+            ->assertJsonPath('nurse_waiting.0.ticket_number', $nurseWaiting->ticket_number)
+            ->assertJsonPath('doctor_waiting.0.ticket_number', $doctorWaiting->ticket_number)
+            ->assertJsonPath('held.0.ticket_number', $held->ticket_number)
+            ->assertJsonPath('served_today.0.ticket_number', $served->ticket_number)
             ->assertJsonPath('nurse_stations.1.status', 'Idle');
 
         $this->assertSame('waiting', $nurseWaiting->fresh()->status);
