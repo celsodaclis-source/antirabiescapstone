@@ -81,7 +81,9 @@ class QueueMonitoringTest extends TestCase
             ->assertJsonPath('stats.nurse_serving', 1)
             ->assertJsonPath('nurse_stations.0.ticket', $ticket->ticket_number);
 
-        $this->actingAs($nurse)->post(route('nurse.station.assessment.complete', $ticket))->assertSessionHas('status');
+        $this->actingAs($nurse)->post(route('nurse.station.assessment.complete', $ticket), [
+            'bite_site' => 'Left leg', 'animal_status' => 'Healthy', 'animal_vaccinated' => '1',
+        ])->assertSessionHas('status');
         $this->actingAs($admin)->get(route('queue-monitoring.data'))->assertJsonPath('stats.nurse_serving', 0)
             ->assertJsonPath('stats.doctor_waiting', 1)
             ->assertJsonPath('nurse_stations.0.status', 'Idle');

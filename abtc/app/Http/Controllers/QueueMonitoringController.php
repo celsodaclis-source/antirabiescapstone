@@ -59,30 +59,32 @@ class QueueMonitoringController extends Controller
         $nurseStations = NurseStation::query()->with('nurse:id,name,role')->orderBy('id')->get();
         $doctorStations = DoctorStation::query()->with('doctor:id,name,role')->orderBy('id')->get();
 
-        $nurseServing = $activeTickets->filter(fn (Ticket $ticket) =>
+        $nurseActive = $activeTickets->filter(fn (Ticket $ticket) =>
             $ticket->assignedStaff?->role === 'Nurse'
             && in_array($ticket->service_stage, $assessmentStages, true)
         )->values();
 
-        $doctorServing = $activeTickets->filter(fn (Ticket $ticket) =>
+        $doctorActive = $activeTickets->filter(fn (Ticket $ticket) =>
             $ticket->assignedStaff?->role === 'Doctor'
             && ($ticket->doctor_station_id !== null || in_array($ticket->service_stage, $assessmentStages, true) || $ticket->service_stage === 'follow_up')
         )->values();
+        $nurseServing = $nurseActive->where('status', 'in_progress')->values();
+        $doctorServing = $doctorActive->where('status', 'in_progress')->values();
 
-        $nurseStations = $nurseStations->map(function (NurseStation $station) use ($nurseServing) {
-            $ticket = $nurseServing->first(fn (Ticket $active) => (int) $active->counter_assigned === (int) $station->id);
+        $nurseStations = $nurseStations->map(function (NurseStation $station) use ($nurseActive) {
+            $ticket = $nurseActive->first(fn (Ticket $active) => (int) $active->counter_assigned === (int) $station->id);
 
             return [
                 'id' => $station->id,
                 'name' => $station->name,
                 'assigned_nurse' => $station->nurse?->name,
                 'ticket' => $ticket?->ticket_number,
-                'status' => $ticket ? 'Serving' : 'Idle',
+                'status' => $ticket ? ($ticket->status === 'in_progress' ? 'Serving' : 'Called') : 'Idle',
             ];
         })->values();
 
-        $doctorStations = $doctorStations->map(function (DoctorStation $station) use ($doctorServing) {
-            $ticket = $doctorServing->first(fn (Ticket $active) =>
+        $doctorStations = $doctorStations->map(function (DoctorStation $station) use ($doctorActive) {
+            $ticket = $doctorActive->first(fn (Ticket $active) =>
                 (int) ($active->doctor_station_id ?? $active->counter_assigned) === (int) $station->id
             );
 
@@ -91,7 +93,7 @@ class QueueMonitoringController extends Controller
                 'name' => $station->name,
                 'assigned_doctor' => $station->doctor?->name,
                 'ticket' => $ticket?->ticket_number,
-                'status' => $ticket ? 'Serving' : 'Idle',
+                'status' => $ticket ? ($ticket->status === 'in_progress' ? 'Serving' : 'Called') : 'Idle',
             ];
         })->values();
 

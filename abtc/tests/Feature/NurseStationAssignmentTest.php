@@ -22,6 +22,7 @@ class NurseStationAssignmentTest extends TestCase
         $this->post(route('nurse.stations.assign', $station))
             ->assertRedirect()->assertSessionHas('status');
         $this->assertDatabaseHas('nurse_stations', ['id' => $station->id, 'user_id' => $nurse->id]);
+        $this->get(route('nurse.station.data'))->assertOk()->assertJsonPath('waiting_count', 0);
         $this->get(route('dashboard'))->assertOk()->assertSee('On Duty')->assertSee('Occupied')->assertSee($nurse->name);
 
         $this->delete(route('nurse.stations.release'))->assertRedirect();
@@ -50,6 +51,7 @@ class NurseStationAssignmentTest extends TestCase
         $station = NurseStation::where('name', 'Nurse 1')->firstOrFail();
 
         $this->actingAs($admin)->get(route('dashboard'))->assertOk()->assertDontSee('Nurse Dashboard');
+        $this->get(route('nurse.station.data'))->assertForbidden();
         $this->post(route('nurse.stations.assign', $station))->assertForbidden();
         $this->delete(route('nurse.stations.release'))->assertForbidden();
     }

@@ -136,7 +136,7 @@ class PatientController extends Controller
                 'suffix' => data_get($data, 'suffix'),
                 'dob' => $data['dob'],
                 'sex' => $data['sex'],
-                'contact_number' => $data['contact_number'],
+                'contact_number' => $data['contact_number'] ?? null,
                 'address' => $data['address'],
                 'barangay' => $data['barangay'],
                 'patient_type' => $data['patient_type'] ?? 'regular',

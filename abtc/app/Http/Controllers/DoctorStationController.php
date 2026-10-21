@@ -6,6 +6,7 @@ use App\Models\DoctorStation;
 use App\Models\Patient;
 use App\Models\Ticket;
 use App\Services\Audit;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,58 @@ use Illuminate\View\View;
 
 class DoctorStationController extends Controller
 {
+    public function data(): JsonResponse
+    {
+        $doctor = request()->user();
+        $station = DoctorStation::where('user_id', $doctor->id)->first();
+        if (! $station) return response()->json(['message' => 'No active doctor station.'], 409);
+
+        $eligible = Ticket::with('patient')
+            ->where('status', 'waiting')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereNotNull('assessment_completed_at')
+            ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
+            ->priorityFirst();
+        $waitingCount = (clone $eligible)->count();
+        $waiting = (clone $eligible)->paginate(15);
+
+        $currentTicket = Ticket::with(['patient.vaccinationSchedules', 'patient.biteIncidents'])
+            ->where('assigned_staff_id', $doctor->id)
+            ->where(function ($query) use ($station) {
+                $query->where('doctor_station_id', $station->id)
+                    ->orWhere(function ($legacy) use ($station) {
+                        $legacy->whereNull('doctor_station_id')->where('counter_assigned', $station->id);
+                    });
+            })
+            ->whereIn('status', ['called', 'in_progress'])
+            ->orderByDesc('called_at')->first();
+
+        $planReady = false;
+        if ($currentTicket?->patient) {
+            $patient = $currentTicket->patient;
+            $incident = $patient->biteIncidents->sortBy('date_of_bite')->first();
+            $doseCount = (int) $patient->planned_dose_count;
+            $planReady = (bool) ($incident?->exposure_category && $patient->vaccine_type
+                && in_array($doseCount, [3, 4], true)
+                && $patient->vaccinationSchedules->count() === $doseCount);
+        }
+
+        return response()->json([
+            'waiting_count' => $waitingCount,
+            'waiting' => $waiting->getCollection()->map(fn (Ticket $ticket) => [
+                'ticket_number' => $ticket->ticket_number,
+                'status' => ucfirst(str_replace('_', ' ', $ticket->status)),
+            ])->values(),
+            'current_ticket_id' => $currentTicket?->id,
+            'current_status' => $currentTicket?->status,
+            'plan_ready' => $planReady,
+            'patients_consulted_today' => Ticket::where('assigned_staff_id', $doctor->id)
+                ->where('status', 'completed')->whereIn('service_stage', ['assessment', 'medical_review'])
+                ->whereBetween('completed_at', [now()->startOfDay(), now()->endOfDay()])->count(),
+            'updated_at' => now()->toIso8601String(),
+        ]);
+    }
+
     public function show(): View|RedirectResponse
     {
         $doctor = request()->user();

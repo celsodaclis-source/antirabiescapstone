@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::middleware('role:Nurse')->prefix('nurse/station')->name('nurse.station.')->group(function () {
         Route::get('/', [NurseStationController::class, 'show'])->name('show');
+        Route::get('/data', [NurseStationController::class, 'data'])->name('data');
         Route::post('/call-next', [NurseStationController::class, 'callNext'])->name('call-next');
         Route::post('/tickets/{ticket}/assessment', [NurseStationController::class, 'completeAssessment'])->name('assessment.complete');
     });
@@ -45,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::middleware('role:Doctor')->prefix('doctor/station')->name('doctor.station.')->group(function () {
         Route::get('/', [DoctorStationController::class, 'show'])->name('show');
+        Route::get('/data', [DoctorStationController::class, 'data'])->name('data');
         Route::post('/call-next', [DoctorStationController::class, 'callNext'])->name('call-next');
         Route::post('/tickets/{ticket}/complete', [DoctorStationController::class, 'complete'])->name('complete');
     });

@@ -3,16 +3,63 @@
 namespace App\Http\Controllers;
 
 use App\Models\NurseStation;
+use App\Models\Patient;
 use App\Models\Ticket;
 use App\Services\Audit;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class NurseStationController extends Controller
 {
+    public function data(): JsonResponse
+    {
+        $nurse = request()->user();
+        $station = NurseStation::where('user_id', $nurse->id)->first();
+        if (! $station) return response()->json(['message' => 'No active nurse station.'], 409);
+
+        $currentTicket = Ticket::with(['patient.biteIncidents'])
+            ->where('assigned_staff_id', $nurse->id)
+            ->where('counter_assigned', $station->id)
+            ->whereIn('status', ['called', 'in_progress'])
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->first();
+
+        $waitingQuery = Ticket::with('patient')
+            ->where('status', 'waiting')
+            ->whereIn('service_stage', ['assessment', 'medical_review'])
+            ->whereNull('assessment_completed_at')
+            ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
+            ->priorityFirst();
+        $waitingCount = (clone $waitingQuery)->count();
+
+        return response()->json([
+            'current' => $currentTicket ? [
+                'id' => $currentTicket->id,
+                'number' => $currentTicket->ticket_number,
+                'patient' => $currentTicket->patient?->fullName() ?? 'Patient record unavailable',
+                'patient_url' => $currentTicket->patient ? route('patients.show', $currentTicket->patient) : null,
+                'assessment_url' => route('nurse.station.assessment.complete', $currentTicket),
+                'incident' => $currentTicket->patient?->biteIncidents->sortBy('date_of_bite')->first()?->only([
+                    'date_of_bite', 'animal_type', 'exposure_category', 'bite_site', 'animal_status', 'animal_vaccinated',
+                ]),
+            ] : null,
+            'waiting' => $waitingQuery->take(15)->get()->map(fn (Ticket $ticket) => [
+                'number' => $ticket->ticket_number,
+                'patient' => $ticket->patient?->fullName() ?? 'Patient record unavailable',
+                'patient_url' => $ticket->patient ? route('patients.show', $ticket->patient) : null,
+                'stage' => ucfirst(str_replace('_', ' ', $ticket->service_stage)),
+                'visit' => ucfirst($ticket->visit_type),
+            ])->values(),
+            'waiting_count' => $waitingCount,
+            'updated_at' => now()->toIso8601String(),
+        ]);
+    }
+
     public function show(): View|RedirectResponse
     {
         $nurse = request()->user();
@@ -32,6 +79,7 @@ class NurseStationController extends Controller
             ->where('status', 'waiting')
             ->whereIn('service_stage', ['assessment', 'medical_review'])
             ->whereNull('assessment_completed_at')
+            ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
             ->priorityFirst()
             ->paginate(15);
 
@@ -58,8 +106,14 @@ class NurseStationController extends Controller
             $next = Ticket::where('status', 'waiting')
                 ->whereIn('service_stage', ['assessment', 'medical_review'])
                 ->whereNull('assessment_completed_at')
+                ->whereDoesntHave('patient.tickets', fn ($query) => $query->whereIn('status', ['called', 'in_progress']))
                 ->priorityFirst()->lockForUpdate()->first();
             if (! $next) return [null, 'No patients are waiting for nurse assessment.'];
+
+            Patient::whereKey($next->patient_id)->lockForUpdate()->firstOrFail();
+            if (Ticket::where('patient_id', $next->patient_id)->whereIn('status', ['called', 'in_progress'])->lockForUpdate()->exists()) {
+                return [null, 'This patient is already being served at another station.'];
+            }
 
             $next->update([
                 'status' => 'in_progress',
@@ -79,12 +133,12 @@ class NurseStationController extends Controller
         return back()->with('status', "Now serving {$ticket->ticket_number}.");
     }
 
-    public function completeAssessment(Ticket $ticket): RedirectResponse
+    public function completeAssessment(Request $request, Ticket $ticket): RedirectResponse
     {
         $nurse = request()->user();
 
         try {
-            DB::transaction(function () use ($ticket, $nurse) {
+            DB::transaction(function () use ($ticket, $nurse, $request) {
                 $station = NurseStation::where('user_id', $nurse->id)->lockForUpdate()->first();
                 if (! $station) {
                     throw ValidationException::withMessages(['station' => 'You must be assigned to a nurse station to assess patients.']);
@@ -100,11 +154,23 @@ class NurseStationController extends Controller
                     throw ValidationException::withMessages(['assessment' => 'This assessment has already been completed.']);
                 }
 
+                $data = validator($request->only(['bite_site', 'animal_status', 'animal_vaccinated']), [
+                    'bite_site' => ['required', 'string', 'max:150'],
+                    'animal_status' => ['required', 'in:Healthy,Sick,Dead,Unknown'],
+                    'animal_vaccinated' => ['required', 'boolean'],
+                ])->validate();
+
                 $patient = $lockedTicket->patient;
                 $incident = $patient?->biteIncidents->sortBy('date_of_bite')->first();
                 if (! $patient || ! $incident || ! $patient->first_name || ! $patient->last_name || ! $patient->dob || ! $patient->sex || ! $patient->address || ! $patient->barangay || ! $incident->date_of_bite || ! $incident->animal_type) {
-                    throw ValidationException::withMessages(['assessment' => 'The patient registration and bite incident record must be complete before assessment can be marked complete.']);
+                    throw ValidationException::withMessages(['assessment' => 'Complete the patient registration, bite incident, and required nursing assessment fields before transferring this patient.']);
                 }
+
+                $incident->update([
+                    'bite_site' => $data['bite_site'],
+                    'animal_status' => $data['animal_status'],
+                    'animal_vaccinated' => (bool) $data['animal_vaccinated'],
+                ]);
 
                 $lockedTicket->update([
                     'status' => 'waiting',
@@ -117,7 +183,7 @@ class NurseStationController extends Controller
                 Audit::log('nurse.assessment_complete', "Nurse assessment completed for ticket {$lockedTicket->ticket_number}", $lockedTicket);
             });
         } catch (ValidationException $exception) {
-            return back()->withErrors($exception->errors());
+            return back()->withErrors($exception->errors())->withInput($request->only(['bite_site', 'animal_status', 'animal_vaccinated']));
         }
 
         return back()->with('status', "Nurse assessment completed for {$ticket->ticket_number}. It is now available to the Doctor queue.");
