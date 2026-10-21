@@ -27,24 +27,7 @@ class DashboardController extends Controller
         }
 
         if ($role === 'Doctor') {
-            $startOfDay = now()->startOfDay();
-            $endOfDay = now()->endOfDay();
-            $doctorTicketsToday = Ticket::where('assigned_staff_id', $user->id)
-                ->where(function ($query) use ($startOfDay, $endOfDay) {
-                    $query->whereBetween('called_at', [$startOfDay, $endOfDay])
-                        ->orWhereBetween('served_at', [$startOfDay, $endOfDay])
-                        ->orWhereBetween('completed_at', [$startOfDay, $endOfDay]);
-                });
-
             return view('doctor.dashboard', [
-                'myPatientsToday' => (clone $doctorTicketsToday)->distinct()->count('patient_id'),
-                'consultationsCompleted' => Ticket::where('assigned_staff_id', $user->id)
-                    ->where('status', 'completed')
-                    ->whereBetween('completed_at', [$startOfDay, $endOfDay])
-                    ->count(),
-                'doctorWaiting' => Ticket::where('status', 'waiting')->count(),
-                'currentlyServing' => Ticket::where('assigned_staff_id', $user->id)
-                    ->where('status', 'in_progress')->count(),
                 'stations' => DoctorStation::with('doctor')->orderBy('id')->get(),
                 'assignedStation' => DoctorStation::where('user_id', $user->id)->first(),
             ]);

@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\DoctorStation;
-use App\Models\Patient;
-use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -22,28 +20,18 @@ class DoctorDashboardTest extends TestCase
         $this->get(route('dashboard'))->assertOk()->assertSee('Doctor Dashboard');
     }
 
-    public function test_doctor_dashboard_uses_doctors_queue_records_and_station_status(): void
+    public function test_doctor_dashboard_shows_four_database_backed_stations_and_duty_status(): void
     {
         $doctor = User::factory()->create(['role' => 'Doctor']);
         $otherDoctor = User::factory()->create(['role' => 'Doctor']);
-        $todayPatient = $this->patient('Today');
-        $activePatient = $this->patient('Active');
-        $waitingPatient = $this->patient('Waiting');
-
-        $this->ticket($todayPatient, 'completed', $doctor, now()->startOfDay()->addHour(), now()->startOfDay()->addHours(2));
-        // A second handled ticket for the same patient must not double-count the patient.
-        $this->ticket($todayPatient, 'completed', $doctor, now()->startOfDay()->addHours(3), now()->startOfDay()->addHours(4));
-        $this->ticket($activePatient, 'in_progress', $doctor, now());
-        $this->ticket($waitingPatient, 'waiting');
-        $this->ticket($this->patient('Other Doctor'), 'completed', $otherDoctor, now(), now());
 
         $station = DoctorStation::where('name', 'Doctor 1')->firstOrFail();
-        $this->actingAs($doctor)->get(route('dashboard'))
-            ->assertOk()->assertSee('Doctor Dashboard')->assertSee('Daily consultations and station management')
-            ->assertSee('My Patients Today')->assertSee('Consultations Completed')
-            ->assertSee('Doctor Waiting')->assertSee('Currently Serving')
-            ->assertSee('>1</p>', false)->assertSee('>2</p>', false)
-            ->assertSee('Off Duty')->assertSee('Ready for consultation');
+        $response = $this->actingAs($doctor)->get(route('dashboard'))
+            ->assertOk()->assertSee('Doctor Dashboard')->assertSee('Select your station to begin patient consultations.')
+            ->assertSee('Doctor 1')->assertSee('Doctor 2')->assertSee('Doctor 3')->assertSee('Doctor 4')
+            ->assertSee('Off Duty')->assertSee('No doctor assigned')->assertSee('Available')->assertSee('Open Station')
+            ->assertDontSee('My Patients Today')->assertDontSee('Today at a glance');
+        $this->assertSame(4, substr_count($response->getContent(), '<article class="rounded-2xl'));
 
         $this->actingAs($doctor)->post(route('doctor.stations.assign', $station))
             ->assertRedirect(route('dashboard'))->assertSessionHas('status');
@@ -76,23 +64,4 @@ class DoctorDashboardTest extends TestCase
         $this->delete(route('doctor.stations.release'))->assertForbidden();
     }
 
-    private function patient(string $firstName): Patient
-    {
-        return Patient::create([
-            'first_name' => $firstName, 'last_name' => 'Patient', 'dob' => '1990-01-01',
-            'sex' => 'Female', 'address' => '1 Test Road', 'barangay' => 'Barangka',
-        ]);
-    }
-
-    private function ticket(Patient $patient, string $status, ?User $doctor = null, $calledAt = null, $completedAt = null): Ticket
-    {
-        return Ticket::create([
-            'patient_id' => $patient->id,
-            'ticket_number' => 'T-'.fake()->unique()->numerify('#####'),
-            'status' => $status,
-            'assigned_staff_id' => $doctor?->id,
-            'called_at' => $calledAt,
-            'completed_at' => $completedAt,
-        ]);
-    }
 }
