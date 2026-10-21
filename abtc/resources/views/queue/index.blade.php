@@ -56,7 +56,7 @@
 
                 <!-- Waiting -->
                 <div class="bg-white shadow rounded-lg p-5 text-black">
-                    <h3 class="font-semibold text-black mb-3 text-black">Waiting ({{ $waiting->count() }})</h3>
+                    <h3 id="queue-waiting-title" class="font-semibold text-black mb-3 text-black">Waiting ({{ $waiting->total() }})</h3>
                     @if ($waiting->isEmpty())
                         <p class="text-sm text-black">No one waiting.</p>
                     @else
@@ -75,6 +75,15 @@
                                 </li>
                             @endforeach
                         </ol>
+                    @endif
+
+                    @if ($waiting->total() > 0)
+                        <div class="mt-4 border-t border-gray-200 pt-3">
+                            <p id="queue-waiting-range" class="mb-3 text-xs text-gray-600">Showing {{ $waiting->firstItem() }} to {{ $waiting->lastItem() }} of {{ $waiting->total() }} results</p>
+                            @if ($waiting->hasPages())
+                                <nav aria-label="Queue waiting list pagination">{{ $waiting->onEachSide(5)->links() }}</nav>
+                            @endif
+                        </div>
                     @endif
 
                     <form method="POST" action="{{ route('queue.call-next') }}" class="mt-4 flex items-center gap-2">

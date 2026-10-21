@@ -53,7 +53,7 @@ class QueueController extends Controller
         $waiting = Ticket::with(['patient', 'vaccinationSchedule'])
             ->where('status', 'waiting')
             ->priorityFirst()
-            ->get();
+            ->paginate(10);
 
         $held = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->where('status', 'held')
@@ -88,7 +88,7 @@ class QueueController extends Controller
         $waiting = Ticket::with(['patient', 'vaccinationSchedule'])
             ->where('status', 'waiting')
             ->priorityFirst()
-            ->get();
+            ->paginate(10);
 
         $held = Ticket::with(['patient', 'assignedStaff', 'vaccinationSchedule'])
             ->where('status', 'held')
